@@ -19,6 +19,12 @@ Chrome에서 설치 없이 사용하는 **Local-first Markdown Workspace**입니
 
 ```text
 .
+├─ app/                       # 실행 가능한 웹앱과 테스트
+│  ├─ src/
+│  ├─ e2e/
+│  ├─ package.json
+│  └─ vite.config.ts
+├─ .github/workflows/         # CI와 GitHub Pages 배포
 ├─ README.md
 ├─ PRD.md
 ├─ PLAN.md
@@ -115,6 +121,7 @@ Phase 0 개발 환경과 Phase 1 File System Foundation이 구현되었습니다
 - pnpm 11.19
 
 ```bash
+cd app
 pnpm install
 pnpm dev
 ```
@@ -122,6 +129,7 @@ pnpm dev
 전체 검증:
 
 ```bash
+cd app
 pnpm format:check
 pnpm lint
 pnpm test
@@ -130,6 +138,8 @@ pnpm test:e2e
 ```
 
 로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다.
+
+실제 사용자 Markdown Workspace는 이 저장소 밖에 둡니다. 자동화 테스트용 Workspace가 필요하면 `app/test/fixtures/workspaces/` 아래에 재현 가능한 Fixture만 추가합니다.
 
 ## 개발 원칙
 

@@ -178,7 +178,7 @@ Search Index
 # 5. 권장 Project Structure
 
 ```text
-src/
+app/src/
 │
 ├─ app/
 │  ├─ App.tsx
@@ -340,6 +340,8 @@ interface DatabaseView {
 - GitHub Pages 배포 Workflow 추가
 
 ## 산출물
+
+다음 명령은 저장소의 `app/` 디렉터리에서 실행한다.
 
 ```text
 pnpm dev
@@ -1102,7 +1104,7 @@ Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행
 
 ## CI
 
-Pull Request와 `main` Push에서 다음을 실행한다.
+Pull Request와 `main` Push에서 `app/`을 작업 디렉터리로 사용해 다음을 실행한다.
 
 ```text
 pnpm install --frozen-lockfile
