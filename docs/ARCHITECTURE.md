@@ -177,7 +177,9 @@ File 읽기
 File 쓰기
 File 생성
 Folder 생성
-File 삭제
+휴지통 이동
+휴지통 복원
+명시적 영구 삭제
 Metadata 조회
 Permission 확인
 ```
@@ -190,6 +192,7 @@ interface FileSystemService {
   readTextFile(path: string): Promise<string>
   writeTextFile(path: string, content: string): Promise<void>
   createDirectory(path: string): Promise<void>
+  moveEntry(sourcePath: string, destinationPath: string): Promise<void>
   deleteEntry(path: string): Promise<void>
   listDirectory(path: string): Promise<FileEntry[]>
   getMetadata(path: string): Promise<FileMetadata>
@@ -227,7 +230,8 @@ Document 생성
 저장
 이름 변경
 이동
-삭제
+휴지통 이동
+휴지통 복원
 Attachment 연결
 External Change Detection
 ```
@@ -325,7 +329,8 @@ MyWorkspace/
    ├─ schemas/
    ├─ views/
    ├─ cache/
-   └─ backup/
+   ├─ backup/
+   └─ trash/
 ```
 
 ---
@@ -433,6 +438,8 @@ Schema의 유일한 원본
 
 # 10. External Change Detection
 
+최소 External Change Guard는 Editor Auto Save를 활성화하기 전에 구현한다. 이후 모든 저장 경로가 동일한 Guard를 사용하도록 Application Layer에서 공통화한다.
+
 문서를 열 때:
 
 ```text
@@ -461,6 +468,8 @@ MVP 처리:
 ```
 
 자동 Merge는 Post-MVP다.
+
+`현재 편집본 유지`는 묵시적 overwrite가 아니라 사용자가 충돌 사실을 확인한 뒤 수행하는 명시적 강제 저장이다.
 
 ---
 
@@ -493,6 +502,12 @@ Success
 ```
 
 실패 시 가능한 범위에서 Rollback한다.
+
+File System Access API에서 직접 Move를 사용할 수 없는 경우 파일 또는 폴더를 대상 위치에 복사하고, 크기 및 필요한 경우 Content Hash로 복사 성공을 검증한 뒤 원본을 제거한다. 복사나 검증이 실패하면 원본을 유지한다.
+
+휴지통 이동도 동일한 순서를 사용하며, 복구 Metadata 저장과 Payload 검증이 모두 성공하기 전에는 원본을 제거하지 않는다.
+
+Workspace Root와 `.workspace/` 내부 경로는 일반 File Operation으로 이동하거나 삭제할 수 없도록 Application Layer와 Infrastructure Layer 양쪽에서 검증한다.
 
 ---
 
@@ -624,6 +639,8 @@ Backup은 다음 Operation 위주로 생성한다.
 
 단순 입력마다 Snapshot을 생성하지 않는다.
 
+일반 파일 삭제는 Backup과 별도로 `.workspace/trash/`에 원본을 이동한다. 원래 상대 경로와 삭제 시각을 함께 기록하며 자동 영구 삭제는 하지 않는다.
+
 ---
 
 # 18. Migration Architecture
@@ -735,3 +752,18 @@ Architecture는 다음 기능을 나중에 추가할 수 있어야 한다.
 5. Attachment를 Base64로 Markdown 안에 저장
 6. 사용자의 Markdown을 앱 전용 Format으로 변환
 7. 외부 수정 확인 없이 Auto Save로 덮어쓰기
+
+---
+
+# 24. Deployment Architecture
+
+MVP는 GitHub Actions에서 검증과 Production Build를 수행한 뒤 GitHub Pages에 배포한다.
+
+Repository Project Site의 하위 경로를 Build Base Path에 반영하고, Client Routing은 Hash Routing을 사용한다.
+
+배포 조건:
+
+1. `pnpm install --frozen-lockfile` 성공
+2. Lint, Test, Production Build 성공
+3. E2E Test 성공
+4. `main` Branch의 검증된 Artifact만 배포

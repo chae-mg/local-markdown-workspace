@@ -145,11 +145,9 @@ Markdown Frontmatter를 활용해 각 Markdown 파일을 Database의 Row처럼 �
 
 Static Web Application 형태로 배포한다.
 
-예:
+MVP는 GitHub Actions를 통해 GitHub Pages에 배포한다.
 
-- Cloudflare Pages
-- GitHub Pages
-- 기타 HTTPS Static Hosting
+GitHub Pages의 Project Site 하위 경로와 새로고침 동작을 안정적으로 처리하기 위해 Hash Routing을 사용한다.
 
 ## 8.3 필수 Browser API
 
@@ -174,6 +172,7 @@ MyWorkspace/
 ├─ Databases/
 ├─ Attachments/
 └─ .workspace/
+   └─ trash/
 ```
 
 ## 9.2 최초 실행
@@ -250,7 +249,8 @@ MyWorkspace/
    ├─ views/
    │  └─ view_c21a90.json
    ├─ cache/
-   └─ backup/
+   ├─ backup/
+   └─ trash/
 ```
 
 ---
@@ -296,7 +296,14 @@ ID는 생성 이후 변경하지 않는다.
 - 문서 이름 변경
 - 문서 이동
 - 문서 삭제
+- 삭제된 문서 복원
 - 문서 복제
+
+문서와 폴더 삭제는 즉시 영구 삭제하지 않는다. 원래 Workspace 상대 경로와 삭제 시각을 기록하고 `.workspace/trash/`로 이동한다.
+
+영구 삭제는 사용자가 휴지통 비우기를 명시적으로 실행한 경우에만 수행하며 자동 보존 기간 만료는 MVP에 포함하지 않는다.
+
+Workspace Root와 `.workspace/` 내부 Metadata는 일반 File Manager에서 이동하거나 삭제할 수 없다.
 
 ## 12.2 저장 포맷
 
@@ -421,9 +428,9 @@ Database Item 하나는 Markdown 파일 하나이다.
 ```markdown
 ---
 id: item_a83f21
-prop_01: 진행중
-prop_02: 높음
-prop_03: 2026-09-30
+prop_01: opt_progress
+prop_02: opt_high
+prop_03: "2026-09-30"
 ---
 
 # Dashboard 개선
@@ -459,13 +466,15 @@ MVP에서 다음 Type을 지원한다.
 ```json
 {
   "prop_7f3a91": {
+    "id": "prop_7f3a91",
     "name": "우선순위",
     "type": "select",
     "deleted": false,
+    "order": 1,
     "options": [
-      "높음",
-      "중간",
-      "낮음"
+      { "id": "opt_high", "name": "높음" },
+      { "id": "opt_medium", "name": "중간" },
+      { "id": "opt_low", "name": "낮음" }
     ]
   }
 }
@@ -544,15 +553,18 @@ prop_7f3a91
   "schemaVersion": 1,
   "id": "db_a81f23",
   "name": "Project",
+  "folder": "Databases/Projects/items",
   "properties": {
     "prop_01": {
+      "id": "prop_01",
       "name": "상태",
       "type": "select",
       "deleted": false,
+      "order": 1,
       "options": [
-        "예정",
-        "진행중",
-        "완료"
+        { "id": "opt_todo", "name": "예정" },
+        { "id": "opt_progress", "name": "진행중" },
+        { "id": "opt_done", "name": "완료" }
       ]
     }
   }
@@ -595,17 +607,19 @@ Schema와 별도 저장한다.
 {
   "version": 1,
   "id": "view_01",
-  "database": "db_01",
+  "databaseId": "db_01",
   "name": "상태별 보기",
   "type": "kanban",
   "groupBy": "prop_01",
-  "filter": [],
-  "sort": [
+  "filters": [],
+  "sorts": [
     {
-      "property": "prop_03",
+      "propertyId": "prop_03",
       "direction": "asc"
     }
-  ]
+  ],
+  "hiddenProperties": [],
+  "propertyOrder": []
 }
 ```
 
@@ -651,14 +665,16 @@ Card Drag & Drop 시 해당 Item의 Markdown Frontmatter 값을 변경한다.
 예:
 
 ```yaml
-prop_01: 예정
+prop_01: opt_todo
 ```
 
 ↓
 
 ```yaml
-prop_01: 진행중
+prop_01: opt_progress
 ```
+
+UI에서는 Option ID를 Schema의 Display Name인 `예정`, `진행중` 등으로 변환해 표시한다.
 
 Table과 Kanban은 항상 동일한 Markdown 데이터를 사용한다.
 
@@ -749,7 +765,8 @@ Workspace Metadata에 Version을 저장한다.
 {
   "workspaceVersion": 1,
   "id": "ws_a912cd",
-  "name": "회사 업무"
+  "name": "회사 업무",
+  "createdAt": "2026-09-09T21:00:00+09:00"
 }
 ```
 
@@ -851,7 +868,9 @@ IndexedDB에는 다음 데이터만 저장한다.
 - Markdown 생성
 - 이름 변경
 - 이동
-- 삭제
+- 휴지통으로 삭제
+- 삭제 항목 복원
+- 명시적 휴지통 비우기
 
 ### Editor
 

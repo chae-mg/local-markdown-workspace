@@ -38,6 +38,7 @@ Workspace
 | Property | `prop_` | `prop_7f3a91` |
 | View | `view_` | `view_8f2c19` |
 | Select Option | `opt_` | `opt_a93b21` |
+| Trash Entry | `trash_` | `trash_b42e18` |
 
 ID는 Display Name과 무관하다.
 
@@ -731,9 +732,35 @@ Workspace
    ├─ workspace.json
    ├─ schemas/
    │  └─ <Database ID>.json
-   └─ views/
-      └─ <View ID>.json
+   ├─ views/
+   │  └─ <View ID>.json
+   ├─ backup/
+   └─ trash/
 ```
+
+## 30.1 Trash Entry
+
+휴지통은 Workspace Scan, Search, Database Item Scan 대상에서 제외한다.
+
+```text
+.workspace/trash/<trash-id>/
+├─ metadata.json
+└─ payload/
+   └─ <원본 파일 또는 폴더>
+```
+
+```ts
+interface TrashEntryMetadata {
+  version: number
+  id: string
+  originalPath: string
+  payloadPath: string
+  kind: "file" | "directory"
+  deletedAt: string
+}
+```
+
+`originalPath`와 `payloadPath`는 Workspace 상대 경로다. 복원 대상 경로에 같은 이름의 항목이 있으면 자동 overwrite하지 않고 새 이름 선택 또는 복원 취소를 요구한다.
 
 ---
 
@@ -746,6 +773,8 @@ Workspace
 5. Schema Migration 전 Backup한다.
 6. Parse 실패 시 원문을 유지한다.
 7. 자동 저장 전에 외부 수정 여부를 검사한다.
+8. 일반 파일 삭제는 `.workspace/trash/`로 이동한다.
+9. 영구 삭제는 사용자가 휴지통 비우기를 명시적으로 실행한 경우에만 수행한다.
 
 ---
 

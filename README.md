@@ -67,17 +67,28 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 ## 권장 개발 순서
 
 ```text
-1. File System Access
-2. Workspace
-3. Markdown Editor
-4. Database / Schema
-5. Table View
-6. Kanban View
-7. External Change Detection
-8. Undo / Backup
-9. Search
-10. Health Check
+1. 개발 환경 / CI
+2. File System Access
+3. Workspace / File Tree
+4. Markdown Parser
+5. External Change Guard / Markdown Editor
+6. Attachment
+7. Database / Schema
+8. Table / Kanban / View
+9. External Change Detection 고도화
+10. Undo / Backup / Trash
+11. Search / Health Check
+12. Migration / Release
 ```
+
+## 확정된 구현 기준
+
+- Package Manager: pnpm
+- Hosting: GitHub Actions를 통한 GitHub Pages 배포
+- Routing: GitHub Pages 호환을 위한 Hash Routing
+- 영속 View Model: `databaseId`, `filters`, `sorts`, `propertyOrder`, `hiddenProperties`
+- 파일 삭제: `.workspace/trash/`로 이동 후 명시적 영구 삭제
+- Auto Save: 저장 직전 외부 변경 검사를 통과한 경우에만 실행
 
 ## 개발 원칙
 

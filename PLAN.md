@@ -19,6 +19,10 @@
 - TypeScript
 - Vite
 
+## Package Manager
+
+- pnpm
+
 ## UI
 
 - Tailwind CSS
@@ -43,7 +47,7 @@
 
 ## Search
 
-- MiniSearch 또는 FlexSearch
+- MiniSearch
 
 ## Storage / Browser API
 
@@ -60,13 +64,15 @@
 
 초기:
 
-- Cloudflare Pages 또는
+- GitHub Actions
 - GitHub Pages
+- Hash Routing
 
 요구사항:
 
 - HTTPS
-- SPA Routing 지원
+- Repository Project Site 하위 경로 지원
+- 직접 새로고침 시 404가 발생하지 않는 Routing
 
 ---
 
@@ -238,6 +244,7 @@ interface WorkspaceConfig {
   workspaceVersion: number
   id: string
   name: string
+  createdAt: string
 }
 ```
 
@@ -248,6 +255,7 @@ interface DatabaseSchema {
   schemaVersion: number
   id: string
   name: string
+  folder: string
   properties: Record<string, PropertyDefinition>
 }
 ```
@@ -268,13 +276,14 @@ interface PropertyDefinition {
   name: string
   type: PropertyType
   deleted: boolean
+  order: number
   options?: SelectOption[]
 }
 ```
 
 ## 6.4 Select Option
 
-Option에도 ID를 부여하는 것을 권장한다.
+Option에도 immutable ID를 부여한다.
 
 ```ts
 interface SelectOption {
@@ -285,29 +294,13 @@ interface SelectOption {
 
 이렇게 하면 Option 이름을 변경해도 기존 값을 안전하게 추적할 수 있다.
 
-향후 구현 시 Frontmatter 저장 방식은 다음 두 안 중 선택한다.
-
-### A. 값 저장
-
-```yaml
-prop_01: 진행중
-```
-
-장점: 사람이 읽기 쉬움
-
-### B. Option ID 저장
+Frontmatter에는 Display Name이 아니라 Option ID를 저장한다.
 
 ```yaml
 prop_01: opt_a82f
 ```
 
-장점: Rename 안전
-
-MVP 권장:
-
-**Select Option ID 저장 + UI에서 Display Name 변환**
-
-Markdown 가독성보다 데이터 안정성을 우선할 경우 이 구조가 적합하다.
+UI는 Schema를 통해 Option ID를 Display Name으로 변환한다. Option 이름 변경 시 Item Migration을 수행하지 않는다.
 
 ## 6.5 View
 
@@ -318,10 +311,10 @@ interface DatabaseView {
   databaseId: string
   name: string
   type: "table" | "kanban"
-  filter: FilterDefinition[]
-  sort: SortDefinition[]
-  columnOrder?: string[]
-  hiddenProperties?: string[]
+  filters: FilterDefinition[]
+  sorts: SortDefinition[]
+  propertyOrder: string[]
+  hiddenProperties: string[]
   groupBy?: string
 }
 ```
@@ -343,15 +336,17 @@ interface DatabaseView {
 - Prettier
 - Vitest
 - Playwright
-- Git Repository 생성
-- 기본 CI 추가
+- GitHub Actions CI 추가
+- GitHub Pages 배포 Workflow 추가
 
 ## 산출물
 
 ```text
-npm run dev
-npm run build
-npm run test
+pnpm dev
+pnpm build
+pnpm test
+pnpm test:e2e
+pnpm lint
 ```
 
 정상 실행.
@@ -379,15 +374,18 @@ Chrome에서 Local Folder를 Workspace로 선택하고 파일을 읽고 쓸 수 
 
 ```ts
 selectDirectory()
-readFile()
-writeFile()
-createFile()
+readTextFile()
+writeTextFile()
 createDirectory()
+moveEntry()
 deleteEntry()
-renameEntry()
 listDirectory()
 getFileMetadata()
 ```
+
+`deleteEntry()`는 휴지통 비우기처럼 사용자가 명시적으로 영구 삭제를 요청한 경로에서만 호출한다. 일반 이름 변경, 이동, 삭제는 `moveEntry()` 기반 Application Use Case로 제공한다.
+
+Workspace Root와 `.workspace/` 내부 경로는 일반 File Operation 대상에서 제외하고 Service Layer에서도 차단한다.
 
 ### Workspace 선택
 
@@ -446,6 +444,7 @@ Workspace/
 ├─ Databases/
 ├─ Attachments/
 └─ .workspace/
+   └─ trash/
 ```
 
 ## workspace.json
@@ -454,7 +453,8 @@ Workspace/
 {
   "workspaceVersion": 1,
   "id": "ws_xxxxxx",
-  "name": "Workspace"
+  "name": "Workspace",
+  "createdAt": "2026-09-09T21:00:00+09:00"
 }
 ```
 
@@ -502,7 +502,9 @@ Workspace Folder 구조를 UI에서 탐색한다.
 - 새 파일
 - 새 폴더
 - 이름 변경
-- 삭제
+- 휴지통으로 이동
+- 삭제 항목 복원
+- 명시적 휴지통 비우기
 - Drag & Drop 이동
 
 ## 주의
@@ -629,12 +631,16 @@ Debounce 방식.
 ↓
 800~1500ms
 ↓
+External Change Guard
+↓
 저장
 ```
 
 ## 중요
 
-외부 수정 감지가 구현되기 전에는 aggressive auto save를 피한다.
+Auto Save를 활성화하기 전에 최소 External Change Guard를 구현한다.
+
+문서를 열 때 기록한 `lastModified`와 저장 직전 Metadata가 다르면 저장을 중단하고, 사용자가 다시 불러오기 또는 현재 편집본으로 덮어쓰기를 선택하도록 한다. 자동 Merge는 하지 않는다.
 
 ## 완료 조건
 
@@ -919,11 +925,11 @@ MVP UI에서는 View 1~2개만 허용해도 되지만 Data Model은 다중 View�
 
 ---
 
-# 19. Phase 12 — External Modification Detection
+# 19. Phase 12 — External Modification Detection 고도화
 
 ## 목표
 
-외부 Editor와의 충돌을 방지한다.
+Phase 5 전에 도입한 최소 External Change Guard를 모든 문서 및 Database 저장 흐름에 일관되게 적용하고 충돌 UX를 고도화한다.
 
 ## 처리
 
@@ -956,17 +962,21 @@ Conflict
 
 MVP에서는 Merge 기능 제외.
 
+현재 편집본 유지는 사용자의 명시적 확인 후 최신 Metadata를 기준으로 덮어쓴다.
+
 ## 완료 조건
 
-VS Code에서 수정 후 Web App 저장 시 조용히 overwrite하지 않는다.
+- VS Code에서 수정 후 Web App 저장 시 조용히 overwrite하지 않는다.
+- 일반 Document, Table Cell, Kanban Card 저장이 동일한 Conflict 판정을 사용한다.
+- 명시적 강제 저장 전에는 외부 변경 파일을 수정하지 않는다.
 
 ---
 
-# 20. Phase 13 — Undo / Backup
+# 20. Phase 13 — Undo / Backup / Trash
 
 ## 목표
 
-중요 변경을 되돌릴 수 있게 한다.
+중요 변경을 되돌리고 삭제한 파일을 복원할 수 있게 한다.
 
 ## Undo Stack
 
@@ -988,12 +998,135 @@ Kanban Move
 .workspace/backup/
 ```
 
-에 Snapshot.
+에 Snapshot을 생성한다.
+
+## Trash
+
+일반 파일과 폴더 삭제는 `.workspace/trash/`로 이동하고 원래 Workspace 상대 경로와 삭제 시각을 기록한다.
+
+영구 삭제는 사용자가 휴지통 비우기를 명시적으로 실행한 경우에만 수행하며 자동 보존 기간 만료는 두지 않는다.
 
 ## MVP 범위
 
 - 최근 Document 변경 Undo
 - Kanban Move Undo
 - Schema 변경 전 Backup
+- 휴지통 이동과 복원
+- 명시적 휴지통 비우기
 
 ## 완료 조건
+
+- Session Undo로 최근 Document 변경과 Kanban 이동을 되돌릴 수 있다.
+- Schema 변경 전에 복구 가능한 Snapshot이 생성된다.
+- 실패한 Batch Operation이 성공으로 표시되지 않는다.
+- 휴지통 이동 시 원래 상대 경로와 삭제 시각이 보존된다.
+- 휴지통에서 복원할 수 있고, 영구 삭제는 명시적 휴지통 비우기로만 가능하다.
+
+---
+
+# 21. Phase 14 — Search
+
+## 목표
+
+Workspace의 Markdown을 Source of Truth로 유지하면서 검색 가능한 파생 Index를 제공한다.
+
+## 구현
+
+- 파일명, 첫 H1, Markdown 본문, Database Property 값 검색
+- 문서 변경 시 Incremental Reindex
+- Index Version 불일치 또는 손상 시 전체 재생성
+- 초기 Scan에서 Markdown Body Lazy Loading
+
+## 완료 조건
+
+- Index를 삭제해도 Workspace 원본에서 재생성할 수 있다.
+- 외부에서 추가·수정·삭제한 파일이 재 Scan 후 검색 결과에 반영된다.
+- 수백 개 Markdown 파일을 Scan하는 동안 UI가 장시간 멈추지 않는다.
+
+---
+
+# 22. Phase 15 — Health Check / Migration
+
+## 목표
+
+Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행한다.
+
+## Health Check
+
+- 잘못된 JSON/YAML
+- 중복 Workspace, Database, Item ID
+- 존재하지 않는 Property/Option 참조
+- Schema/View 누락 또는 지원하지 않는 Version
+- 깨진 Attachment Link
+- 복원할 수 없는 휴지통 Metadata
+
+## Migration
+
+1. 대상 Version과 Migration 경로를 검증한다.
+2. 변경 전 `.workspace/backup/`에 Snapshot을 생성한다.
+3. Version을 한 단계씩 순차 변경한다.
+4. 각 단계 결과를 Validation한다.
+5. 실패 시 기존 원본을 유지하고 오류를 보고한다.
+
+## 완료 조건
+
+- 오류가 있는 Workspace를 열어도 원본을 임의 수정하지 않는다.
+- Migration Fixture로 이전 Version부터 최신 Version까지 순차 변환을 검증한다.
+- 중간 Version 누락과 미래 Version은 안전하게 차단한다.
+
+---
+
+# 23. Phase 16 — QA / Release
+
+## 테스트 전략
+
+### Unit Test
+
+- ID, Path, Validation 같은 Domain Utility
+- Markdown/Frontmatter Round-trip
+- Schema, Property, View Validation
+- Migration과 Conflict 판정
+
+### Integration Test
+
+- Browser API와 분리된 In-memory FileSystem Adapter 사용
+- Workspace 초기화, 문서 저장, 휴지통 이동/복원
+- Database Item과 Schema/View 연동
+- 외부 수정 충돌과 Backup 실패 경로
+
+### E2E / Manual Browser Test
+
+- Playwright로 Browser API 외 UI 흐름 자동화
+- 실제 Chrome에서 Folder Picker와 Permission 흐름 수동 검증
+- Windows/macOS에서 상대 경로 및 Attachment 이동성 검증
+
+## CI
+
+Pull Request와 `main` Push에서 다음을 실행한다.
+
+```text
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm test
+pnpm build
+pnpm test:e2e
+```
+
+`main`의 CI가 성공한 경우에만 GitHub Pages 배포 Workflow를 실행한다.
+
+## Release 기준
+
+- Lint, Unit, Integration, E2E Test 통과
+- Production Build 성공
+- GitHub Pages Project Site에서 Hash Routing 동작
+- Chrome 최신 버전에서 File System 권한 흐름 수동 확인
+- PRD 성공 기준의 핵심 흐름 통과
+- 알려진 데이터 손실 가능성이 없음
+- Workspace/Schema/View Version과 Migration 문서가 현재 구현과 일치
+
+## 완료 조건
+
+- 새 Checkout에서 pnpm 명령만으로 설치·검증·빌드할 수 있다.
+- GitHub Actions가 동일한 검증을 재현한다.
+- 배포 URL에서 첫 Workspace 선택 화면이 표시된다.
+- 실패한 검증이 있는 Commit은 배포되지 않는다.
