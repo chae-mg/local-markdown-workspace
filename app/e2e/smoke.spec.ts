@@ -15,6 +15,11 @@ test('shows the initial workspace entry screen', async ({ page }) => {
 test('opens and persists a real serializable directory handle', async ({
   page,
 }) => {
+  test.skip(
+    Boolean(process.env.CI) && process.platform === 'linux',
+    'Linux headless Chromium exits when serializing an OPFS directory handle.',
+  )
+
   await page.addInitScript(() => {
     window.showDirectoryPicker = async () => {
       const originPrivateRoot = await navigator.storage.getDirectory()
@@ -57,12 +62,6 @@ test('opens and persists a real serializable directory handle', async ({
   })
 
   expect(persistedHandleName).toBe('E2E Workspace')
-
-  // Chromium on Linux CI closes the session when an OPFS test handle is
-  // restored after reload. Real picker handles are covered manually in Chrome.
-  if (process.env.CI && process.platform === 'linux') {
-    return
-  }
 
   await page.reload()
   await expect(page.getByText('E2E Workspace · 연결됨')).toBeVisible()

@@ -137,7 +137,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다.
+로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다. OPFS Directory Handle 직렬화는 Linux Headless Chromium을 종료시키므로, 실제 Handle 저장·복원 E2E는 로컬 Chrome에서 실행하고 CI에서는 관련 Store와 Service를 단위·통합 테스트로 검증합니다.
 
 실제 사용자 Markdown Workspace는 이 저장소 밖에 둡니다. 자동화 테스트용 Workspace가 필요하면 `app/test/fixtures/workspaces/` 아래에 재현 가능한 Fixture만 추가합니다.
 
