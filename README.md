@@ -90,6 +90,42 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 - 파일 삭제: `.workspace/trash/`로 이동 후 명시적 영구 삭제
 - Auto Save: 저장 직전 외부 변경 검사를 통과한 경우에만 실행
 
+## 현재 구현 상태
+
+Phase 0 개발 환경 구성이 완료되었습니다.
+
+- React + TypeScript + Vite
+- Tailwind CSS + shadcn/ui 구조
+- ESLint + Prettier
+- Vitest + React Testing Library
+- Playwright
+- GitHub Actions CI + GitHub Pages 배포
+- Hash Routing 기반 초기 Workspace 진입 화면
+
+## 로컬 실행
+
+요구사항:
+
+- Node.js 22.12 이상
+- pnpm 11.19
+
+```bash
+pnpm install
+pnpm dev
+```
+
+전체 검증:
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm test
+pnpm build
+pnpm test:e2e
+```
+
+로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다.
+
 ## 개발 원칙
 
 1. 사용자 Content는 일반 Markdown으로 유지합니다.

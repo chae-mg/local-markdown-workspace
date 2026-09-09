@@ -1,0 +1,149 @@
+import {
+  Database,
+  FileText,
+  FolderOpen,
+  HardDrive,
+  Search,
+  ShieldCheck,
+} from 'lucide-react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { Button } from '@/components/ui/button'
+
+const navigationItems = [
+  { label: '문서', icon: FileText },
+  { label: '데이터베이스', icon: Database },
+  { label: '검색', icon: Search },
+]
+
+function WelcomePage() {
+  return (
+    <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
+      <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[calc(100vh-2.5rem)]">
+        <aside className="hidden w-64 shrink-0 border-r border-stone-200 bg-stone-50/80 p-5 md:flex md:flex-col">
+          <div className="flex items-center gap-3 px-1">
+            <div className="grid size-9 place-items-center rounded-xl bg-stone-950 text-sm font-semibold tracking-tight text-white">
+              LM
+            </div>
+            <div>
+              <p className="text-sm font-semibold tracking-tight">
+                Local Markdown
+              </p>
+              <p className="text-xs text-stone-500">내 폴더가 원본입니다</p>
+            </div>
+          </div>
+
+          <nav aria-label="주 탐색" className="mt-9 space-y-1">
+            {navigationItems.map(({ label, icon: Icon }, index) => (
+              <button
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                  index === 0
+                    ? 'bg-white font-medium text-stone-950 shadow-sm ring-1 ring-stone-200'
+                    : 'text-stone-500 hover:bg-white hover:text-stone-800'
+                }`}
+                key={label}
+                type="button"
+              >
+                <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-auto rounded-2xl border border-stone-200 bg-white p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ShieldCheck
+                aria-hidden="true"
+                className="size-4 text-emerald-700"
+              />
+              Local-first
+            </div>
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              문서는 서버가 아닌 사용자가 선택한 로컬 폴더에 저장됩니다.
+            </p>
+          </div>
+        </aside>
+
+        <main className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-16 items-center justify-between border-b border-stone-200 px-5 sm:px-8">
+            <div className="flex items-center gap-3 md:hidden">
+              <div className="grid size-8 place-items-center rounded-lg bg-stone-950 text-xs font-semibold text-white">
+                LM
+              </div>
+              <span className="text-sm font-semibold">Local Markdown</span>
+            </div>
+            <div className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
+              <HardDrive aria-hidden="true" className="size-4" />
+              연결된 워크스페이스 없음
+            </div>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+              Phase 0 · 준비됨
+            </span>
+          </header>
+
+          <section className="grid flex-1 place-items-center px-5 py-12 sm:px-10">
+            <div className="w-full max-w-3xl">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600">
+                <span className="size-1.5 rounded-full bg-emerald-600" />
+                설치 없이 Chrome에서 시작
+              </div>
+              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-6xl">
+                내 파일은 내 폴더에,
+                <br />
+                편집은 더 편안하게.
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+                Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서
+                관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.
+              </p>
+
+              <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <Button disabled size="lg">
+                  <FolderOpen aria-hidden="true" className="size-4" />
+                  워크스페이스 열기
+                </Button>
+                <p className="text-xs leading-5 text-stone-500">
+                  폴더 연결은 다음 단계에서 활성화됩니다.
+                </p>
+              </div>
+
+              <dl className="mt-14 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-medium text-stone-500">
+                    저장 위치
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">
+                    Local File System
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-stone-500">
+                    원본 형식
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">표준 Markdown</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-stone-500">
+                    지원 환경
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">
+                    Chrome · Windows · macOS
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route element={<WelcomePage />} path="/" />
+      <Route element={<Navigate replace to="/" />} path="*" />
+    </Routes>
+  )
+}
