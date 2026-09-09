@@ -26,6 +26,7 @@ function WelcomePage() {
   const {
     errorMessage,
     initialize,
+    initializeWorkspace,
     openWorkspace,
     reconnectWorkspace,
     status,
@@ -36,24 +37,33 @@ function WelcomePage() {
     void initialize()
   }, [initialize])
 
-  const isOpening = status === 'checking' || status === 'opening'
+  const isInitializing = status === 'initializing'
+  const isOpening =
+    status === 'checking' || status === 'opening' || isInitializing
   const isUnsupported = status === 'unsupported'
+  const needsInitialization = status === 'initialization-required'
   const needsPermission = status === 'permission-required'
   const isReady = status === 'ready'
 
-  const handleWorkspaceAction = needsPermission
-    ? reconnectWorkspace
-    : openWorkspace
+  const handleWorkspaceAction = needsInitialization
+    ? initializeWorkspace
+    : needsPermission
+      ? reconnectWorkspace
+      : openWorkspace
 
   const buttonLabel = isOpening
-    ? 'Workspace 확인 중'
+    ? isInitializing
+      ? 'Workspace 준비 중'
+      : 'Workspace 확인 중'
     : isUnsupported
       ? '지원되는 Chrome이 필요합니다'
-      : needsPermission
-        ? '접근 권한 다시 허용'
-        : isReady
-          ? '다른 워크스페이스 열기'
-          : '워크스페이스 열기'
+      : needsInitialization
+        ? 'Workspace로 초기화'
+        : needsPermission
+          ? '접근 권한 다시 허용'
+          : isReady
+            ? '다른 워크스페이스 열기'
+            : '워크스페이스 열기'
 
   return (
     <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
@@ -120,11 +130,17 @@ function WelcomePage() {
                 <HardDrive aria-hidden="true" className="size-4" />
               )}
               {workspace
-                ? `${workspace.name} · ${isReady ? '연결됨' : '권한 필요'}`
+                ? `${workspace.name} · ${
+                    isReady
+                      ? '연결됨'
+                      : needsInitialization
+                        ? '초기화 필요'
+                        : '권한 필요'
+                  }`
                 : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 1 · File System
+              Phase 2 · Workspace
             </span>
           </header>
 
@@ -135,13 +151,32 @@ function WelcomePage() {
                 설치 없이 Chrome에서 시작
               </div>
               <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.02em] text-balance sm:text-6xl">
-                내 파일은 내 폴더에,
-                <br />
-                편집은 더 편안하게.
+                {needsInitialization ? (
+                  <>
+                    이 폴더를 Workspace로
+                    <br />
+                    준비할까요?
+                  </>
+                ) : isReady ? (
+                  <>
+                    {workspace?.name} Workspace가
+                    <br />
+                    준비되었습니다.
+                  </>
+                ) : (
+                  <>
+                    내 파일은 내 폴더에,
+                    <br />
+                    편집은 더 편안하게.
+                  </>
+                )}
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-                Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서
-                관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.
+                {needsInitialization
+                  ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
+                  : isReady
+                    ? 'Workspace ID와 기본 폴더 구조를 확인했습니다. 다음 단계에서 문서 탐색과 파일 트리를 연결합니다.'
+                    : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
               </p>
 
               <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -163,7 +198,7 @@ function WelcomePage() {
                     )}
                     {buttonLabel}
                   </Button>
-                  {needsPermission ? (
+                  {needsPermission || needsInitialization ? (
                     <Button
                       onClick={() => void openWorkspace()}
                       size="lg"
@@ -176,9 +211,11 @@ function WelcomePage() {
                 <p className="text-xs leading-5 text-stone-500">
                   {isUnsupported
                     ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
-                    : needsPermission
-                      ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
-                      : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
+                    : needsInitialization
+                      ? '초기화 전에는 기존 파일을 수정하거나 이동하지 않습니다.'
+                      : needsPermission
+                        ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
+                        : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
                 </p>
               </div>
 

@@ -27,9 +27,3 @@ export interface RecentWorkspace<DirectoryHandle> {
   lastOpened: string
   name: string
 }
-
-export interface WorkspaceSummary {
-  lastOpened: string
-  name: string
-  permission: PermissionState
-}

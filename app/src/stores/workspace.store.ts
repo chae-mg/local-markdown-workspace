@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
-import type { WorkspaceSummary } from '@/domain/file-system'
 import { isPickerCancellation } from '@/domain/errors'
+import type { WorkspaceSummary } from '@/domain/workspace'
 import { workspaceService } from '@/app/composition-root'
 import type { WorkspaceApplicationService } from '@/services/workspace.service'
 
@@ -9,6 +9,8 @@ export type WorkspaceStatus =
   | 'checking'
   | 'idle'
   | 'opening'
+  | 'initializing'
+  | 'initialization-required'
   | 'permission-required'
   | 'ready'
   | 'unsupported'
@@ -19,6 +21,7 @@ export interface WorkspaceStore {
   status: WorkspaceStatus
   workspace: WorkspaceSummary | null
   initialize(): Promise<void>
+  initializeWorkspace(): Promise<void>
   openWorkspace(): Promise<void>
   reconnectWorkspace(): Promise<void>
 }
@@ -27,6 +30,10 @@ function messageFromError(error: unknown) {
   return error instanceof Error
     ? error.message
     : 'Workspace를 여는 중 알 수 없는 오류가 발생했습니다.'
+}
+
+function statusForWorkspace(workspace: WorkspaceSummary): WorkspaceStatus {
+  return workspace.initialized ? 'ready' : 'initialization-required'
 }
 
 export function createWorkspaceStore(service: WorkspaceApplicationService) {
@@ -58,7 +65,7 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         set({
           status:
             workspace.permission === 'granted'
-              ? 'ready'
+              ? statusForWorkspace(workspace)
               : 'permission-required',
           workspace,
         })
@@ -76,7 +83,7 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
       try {
         const workspace = await service.selectWorkspace()
-        set({ status: 'ready', workspace })
+        set({ status: statusForWorkspace(workspace), workspace })
       } catch (error) {
         if (isPickerCancellation(error)) {
           set({ status: 'idle' })
@@ -84,6 +91,24 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         }
 
         set({ status: 'error', errorMessage: messageFromError(error) })
+      }
+    },
+
+    async initializeWorkspace() {
+      if (get().status !== 'initialization-required') {
+        return
+      }
+
+      set({ status: 'initializing', errorMessage: null })
+
+      try {
+        const workspace = await service.initializeWorkspace()
+        set({ status: 'ready', workspace })
+      } catch (error) {
+        set({
+          status: 'initialization-required',
+          errorMessage: messageFromError(error),
+        })
       }
     },
 
@@ -96,7 +121,7 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
       try {
         const workspace = await service.requestRecentWorkspacePermission()
-        set({ status: 'ready', workspace })
+        set({ status: statusForWorkspace(workspace), workspace })
       } catch (error) {
         set({
           status: 'permission-required',

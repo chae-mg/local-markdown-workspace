@@ -3,6 +3,8 @@ export type WorkspaceErrorCode =
   | 'permission-denied'
   | 'picker-cancelled'
   | 'workspace-not-open'
+  | 'invalid-workspace'
+  | 'unsupported-workspace-version'
   | 'invalid-path'
   | 'protected-path'
   | 'entry-not-found'

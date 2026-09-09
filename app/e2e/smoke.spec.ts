@@ -9,7 +9,7 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 1 · File System')).toBeVisible()
+  await expect(page.getByText('Phase 2 · Workspace')).toBeVisible()
 })
 
 test('opens and persists a real serializable directory handle', async ({
@@ -32,6 +32,37 @@ test('opens and persists a real serializable directory handle', async ({
 
   await page.getByRole('button', { name: '워크스페이스 열기' }).click()
   await expect(page.getByText('E2E Workspace · 연결됨')).toBeVisible()
+
+  const initializedWorkspace = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const entries: string[] = []
+
+    for await (const entry of workspace.values()) {
+      entries.push(entry.name)
+    }
+
+    const metadata = await workspace.getDirectoryHandle('.workspace')
+    const manifestFile = await (
+      await metadata.getFileHandle('workspace.json')
+    ).getFile()
+    const manifest = JSON.parse(await manifestFile.text()) as {
+      id?: string
+      workspaceVersion?: number
+    }
+
+    return { entries: entries.sort(), manifest }
+  })
+
+  expect(initializedWorkspace.entries).toEqual([
+    '.workspace',
+    'Attachments',
+    'Databases',
+    'Documents',
+  ])
+  expect(initializedWorkspace.manifest.workspaceVersion).toBe(1)
+  expect(initializedWorkspace.manifest.id).toMatch(/^ws_/)
 
   const persistedHandleName = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -65,4 +96,53 @@ test('opens and persists a real serializable directory handle', async ({
 
   await page.reload()
   await expect(page.getByText('E2E Workspace · 연결됨')).toBeVisible()
+})
+
+test('asks before initializing a folder with existing files', async ({
+  page,
+}) => {
+  test.skip(
+    Boolean(process.env.CI) && process.platform === 'linux',
+    'Linux headless Chromium exits when serializing an OPFS directory handle.',
+  )
+
+  await page.addInitScript(() => {
+    window.showDirectoryPicker = async () => {
+      const originPrivateRoot = await navigator.storage.getDirectory()
+      const workspace = await originPrivateRoot.getDirectoryHandle(
+        'Existing E2E Workspace',
+        { create: true },
+      )
+      const existingFile = await workspace.getFileHandle('기존문서.md', {
+        create: true,
+      })
+      const writable = await existingFile.createWritable()
+      await writable.write('# 기존 문서')
+      await writable.close()
+      return workspace
+    }
+  })
+  await page.goto('/#/')
+
+  await page.getByRole('button', { name: '워크스페이스 열기' }).click()
+  await expect(
+    page.getByRole('heading', { name: /이 폴더를 Workspace로/ }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Existing E2E Workspace · 초기화 필요'),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Workspace로 초기화' }).click()
+  await expect(page.getByText('Existing E2E Workspace · 연결됨')).toBeVisible()
+
+  const existingContent = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace = await originPrivateRoot.getDirectoryHandle(
+      'Existing E2E Workspace',
+    )
+    return (
+      await (await workspace.getFileHandle('기존문서.md')).getFile()
+    ).text()
+  })
+  expect(existingContent).toBe('# 기존 문서')
 })
