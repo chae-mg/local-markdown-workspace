@@ -134,7 +134,7 @@ function WelcomePage() {
                 <span className="size-1.5 rounded-full bg-emerald-600" />
                 설치 없이 Chrome에서 시작
               </div>
-              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-6xl">
+              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.02em] text-balance sm:text-6xl">
                 내 파일은 내 폴더에,
                 <br />
                 편집은 더 편안하게.

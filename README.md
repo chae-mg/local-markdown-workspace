@@ -102,6 +102,7 @@ Phase 0 개발 환경과 Phase 1 File System Foundation이 구현되었습니다
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
+- Pretendard Variable 한글 Webfont
 - ESLint + Prettier
 - Vitest + React Testing Library
 - Playwright
