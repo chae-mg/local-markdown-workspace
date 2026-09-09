@@ -92,7 +92,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경 구성이 완료되었습니다.
+Phase 0 개발 환경과 Phase 1 File System Foundation이 구현되었습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -100,7 +100,12 @@ Phase 0 개발 환경 구성이 완료되었습니다.
 - Vitest + React Testing Library
 - Playwright
 - GitHub Actions CI + GitHub Pages 배포
-- Hash Routing 기반 초기 Workspace 진입 화면
+- Hash Routing 기반 Workspace 진입 화면
+- Chrome Folder Picker와 Read/Write Permission 흐름
+- 최근 `FileSystemDirectoryHandle`의 IndexedDB 저장과 복원
+- File/Folder 조회, 생성, 읽기, 쓰기, 이동, 삭제, Metadata API
+- Workspace 상대 경로 검증과 `.workspace/` 보호
+- 복사 검증 후 원본을 제거하는 안전한 이동 Fallback
 
 ## 로컬 실행
 

@@ -1,14 +1,20 @@
 import {
   Database,
   FileText,
+  FolderCheck,
   FolderOpen,
   HardDrive,
+  LoaderCircle,
+  RefreshCw,
   Search,
   ShieldCheck,
+  TriangleAlert,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { useWorkspaceStore } from '@/stores/workspace.store'
 
 const navigationItems = [
   { label: '문서', icon: FileText },
@@ -17,6 +23,38 @@ const navigationItems = [
 ]
 
 function WelcomePage() {
+  const {
+    errorMessage,
+    initialize,
+    openWorkspace,
+    reconnectWorkspace,
+    status,
+    workspace,
+  } = useWorkspaceStore()
+
+  useEffect(() => {
+    void initialize()
+  }, [initialize])
+
+  const isOpening = status === 'checking' || status === 'opening'
+  const isUnsupported = status === 'unsupported'
+  const needsPermission = status === 'permission-required'
+  const isReady = status === 'ready'
+
+  const handleWorkspaceAction = needsPermission
+    ? reconnectWorkspace
+    : openWorkspace
+
+  const buttonLabel = isOpening
+    ? 'Workspace 확인 중'
+    : isUnsupported
+      ? '지원되는 Chrome이 필요합니다'
+      : needsPermission
+        ? '접근 권한 다시 허용'
+        : isReady
+          ? '다른 워크스페이스 열기'
+          : '워크스페이스 열기'
+
   return (
     <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[calc(100vh-2.5rem)]">
@@ -73,11 +111,20 @@ function WelcomePage() {
               <span className="text-sm font-semibold">Local Markdown</span>
             </div>
             <div className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
-              <HardDrive aria-hidden="true" className="size-4" />
-              연결된 워크스페이스 없음
+              {isReady ? (
+                <FolderCheck
+                  aria-hidden="true"
+                  className="size-4 text-emerald-700"
+                />
+              ) : (
+                <HardDrive aria-hidden="true" className="size-4" />
+              )}
+              {workspace
+                ? `${workspace.name} · ${isReady ? '연결됨' : '권한 필요'}`
+                : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 0 · 준비됨
+              Phase 1 · File System
             </span>
           </header>
 
@@ -98,14 +145,55 @@ function WelcomePage() {
               </p>
 
               <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                <Button disabled size="lg">
-                  <FolderOpen aria-hidden="true" className="size-4" />
-                  워크스페이스 열기
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={isOpening || isUnsupported}
+                    onClick={() => void handleWorkspaceAction()}
+                    size="lg"
+                  >
+                    {isOpening ? (
+                      <LoaderCircle
+                        aria-hidden="true"
+                        className="size-4 animate-spin"
+                      />
+                    ) : needsPermission ? (
+                      <RefreshCw aria-hidden="true" className="size-4" />
+                    ) : (
+                      <FolderOpen aria-hidden="true" className="size-4" />
+                    )}
+                    {buttonLabel}
+                  </Button>
+                  {needsPermission ? (
+                    <Button
+                      onClick={() => void openWorkspace()}
+                      size="lg"
+                      variant="outline"
+                    >
+                      다른 폴더 선택
+                    </Button>
+                  ) : null}
+                </div>
                 <p className="text-xs leading-5 text-stone-500">
-                  폴더 연결은 다음 단계에서 활성화됩니다.
+                  {isUnsupported
+                    ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
+                    : needsPermission
+                      ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
+                      : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
                 </p>
               </div>
+
+              {errorMessage ? (
+                <div
+                  className="mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <span>{errorMessage}</span>
+                </div>
+              ) : null}
 
               <dl className="mt-14 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
                 <div>
