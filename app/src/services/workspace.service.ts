@@ -33,6 +33,10 @@ export interface WorkspaceApplicationService {
   selectWorkspace(): Promise<WorkspaceSummary>
   initializeWorkspace(): Promise<WorkspaceSummary>
   requestRecentWorkspacePermission(): Promise<WorkspaceSummary>
+  moveEntry(
+    path: string,
+    destinationDirectoryPath: string,
+  ): Promise<WorkspaceEntry>
   moveEntryToTrash(path: string): Promise<TrashEntryMetadata>
   renameEntry(path: string, name: string): Promise<WorkspaceEntry>
   restoreTrashEntry(id: string, name: string): Promise<WorkspaceEntry>
@@ -370,6 +374,53 @@ export class WorkspaceService<
     return {
       kind: source.kind,
       name: destinationName,
+      path: destinationPath,
+    }
+  }
+
+  async moveEntry(path: string, destinationDirectoryPath: string) {
+    const root = this.getCurrentHandle()
+    const normalizedSourcePath = assertMutableWorkspacePath(path)
+    const normalizedDestinationDirectoryPath = normalizeWorkspacePath(
+      destinationDirectoryPath,
+    )
+
+    if (normalizedDestinationDirectoryPath) {
+      assertMutableWorkspacePath(normalizedDestinationDirectoryPath)
+    }
+
+    if (
+      normalizedDestinationDirectoryPath === normalizedSourcePath ||
+      normalizedDestinationDirectoryPath.startsWith(`${normalizedSourcePath}/`)
+    ) {
+      throw new WorkspaceError(
+        'invalid-path',
+        '폴더를 자기 자신 또는 하위 폴더로 이동할 수 없습니다.',
+      )
+    }
+
+    const source = await this.fileSystem.getFileMetadata(
+      root,
+      normalizedSourcePath,
+    )
+    const destinationPath = joinWorkspacePath(
+      normalizedDestinationDirectoryPath,
+      source.name,
+    )
+
+    if (destinationPath === normalizedSourcePath) {
+      return { kind: source.kind, name: source.name, path: source.path }
+    }
+
+    await this.assertEntryAvailable(
+      root,
+      normalizedDestinationDirectoryPath,
+      source.name,
+    )
+    await this.fileSystem.moveEntry(root, normalizedSourcePath, destinationPath)
+    return {
+      kind: source.kind,
+      name: source.name,
       path: destinationPath,
     }
   }

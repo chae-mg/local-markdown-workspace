@@ -15,6 +15,7 @@ function createService() {
     initializeWorkspace: vi.fn(),
     isSupported: vi.fn(() => true),
     listTrashEntries: vi.fn(async (): Promise<TrashEntryMetadata[]> => []),
+    moveEntry: vi.fn(),
     moveEntryToTrash: vi.fn(),
     requestRecentWorkspacePermission: vi.fn(),
     restoreRecentWorkspace: vi.fn(async () => null),
@@ -131,6 +132,40 @@ describe('workspace store file tree', () => {
     expect(store.getState()).toMatchObject({
       selectedDirectoryPath: 'Documents',
       selectedPath: 'Documents/주간회의.md',
+    })
+  })
+
+  it('moves a file and follows its destination path', async () => {
+    const service = createService()
+    service.moveEntry.mockResolvedValueOnce({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Projects/회의록.md',
+    })
+    service.scanWorkspace.mockResolvedValueOnce([
+      { kind: 'directory', name: 'Documents', path: 'Documents' },
+      { kind: 'directory', name: 'Projects', path: 'Projects' },
+      {
+        kind: 'file',
+        name: '회의록.md',
+        path: 'Projects/회의록.md',
+      },
+    ])
+    const store = createWorkspaceStore(service)
+    store.setState({ status: 'ready' })
+
+    await expect(
+      store.getState().moveEntry('Documents/회의록.md', 'Projects'),
+    ).resolves.toBe(true)
+
+    expect(service.moveEntry).toHaveBeenCalledWith(
+      'Documents/회의록.md',
+      'Projects',
+    )
+    expect(store.getState()).toMatchObject({
+      mutationStatus: 'idle',
+      selectedDirectoryPath: 'Projects',
+      selectedPath: 'Projects/회의록.md',
     })
   })
 

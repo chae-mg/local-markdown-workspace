@@ -41,6 +41,7 @@ function WelcomePage() {
     refreshTrash,
     mutationErrorMessage,
     mutationStatus,
+    moveEntry,
     renameEntry,
     restoreTrashEntry,
     selectedDirectoryPath,
@@ -141,6 +142,7 @@ function WelcomePage() {
                 onCreateFolder={createFolder}
                 onCreateMarkdownFile={createMarkdownFile}
                 onDirectorySelect={selectDirectory}
+                onMoveEntry={moveEntry}
                 onMoveToTrash={moveEntryToTrash}
                 onRefresh={() => void refreshWorkspace()}
                 onRenameEntry={renameEntry}
@@ -259,6 +261,7 @@ function WelcomePage() {
                     onCreateFolder={createFolder}
                     onCreateMarkdownFile={createMarkdownFile}
                     onDirectorySelect={selectDirectory}
+                    onMoveEntry={moveEntry}
                     onMoveToTrash={moveEntryToTrash}
                     onRefresh={() => void refreshWorkspace()}
                     onRenameEntry={renameEntry}

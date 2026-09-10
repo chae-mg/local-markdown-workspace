@@ -24,6 +24,7 @@ export interface WorkspaceStore {
   mutationStatus:
     | 'idle'
     | 'creating'
+    | 'moving'
     | 'renaming'
     | 'trashing'
     | 'restoring'
@@ -44,6 +45,7 @@ export interface WorkspaceStore {
   initializeWorkspace(): Promise<void>
   emptyTrash(): Promise<boolean>
   openWorkspace(): Promise<void>
+  moveEntry(path: string, destinationDirectoryPath: string): Promise<boolean>
   refreshTrash(): Promise<void>
   refreshWorkspace(): Promise<void>
   reconnectWorkspace(): Promise<void>
@@ -416,6 +418,41 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
               ? renamedEntry.path
               : parentDirectoryPath(renamedEntry.path),
           selectedPath: renamedEntry.kind === 'file' ? renamedEntry.path : null,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    async moveEntry(path, destinationDirectoryPath) {
+      if (get().status !== 'ready' || get().mutationStatus !== 'idle') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'moving' })
+
+      try {
+        const movedEntry = await service.moveEntry(
+          path,
+          destinationDirectoryPath,
+        )
+        const entries = await service.scanWorkspace()
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath:
+            movedEntry.kind === 'directory'
+              ? movedEntry.path
+              : parentDirectoryPath(movedEntry.path),
+          selectedPath: movedEntry.kind === 'file' ? movedEntry.path : null,
           treeErrorMessage: null,
           treeStatus: 'ready',
         })

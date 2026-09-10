@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 
@@ -33,6 +33,7 @@ function renderTree(
     onCreateFolder: vi.fn(async () => true),
     onCreateMarkdownFile: vi.fn(async () => true),
     onDirectorySelect: vi.fn(),
+    onMoveEntry: vi.fn(async () => true),
     onMoveToTrash: vi.fn(async () => true),
     onRefresh: vi.fn(),
     onRenameEntry: vi.fn(async () => true),
@@ -148,6 +149,78 @@ describe('WorkspaceTree', () => {
       'Documents/회의록.md',
       '주간회의.md',
     )
+  })
+
+  it('moves an entry to a selected folder from the action menu', async () => {
+    const user = userEvent.setup()
+    const onMoveEntry = vi.fn(async () => true)
+    renderTree({
+      onMoveEntry,
+      selectedPath: 'Documents/회의록.md',
+    })
+
+    await user.click(screen.getByRole('button', { name: '회의록.md 작업' }))
+    await user.click(screen.getByRole('button', { name: '폴더로 이동' }))
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: '이동할 폴더' }),
+      'Projects',
+    )
+    await user.click(screen.getByRole('button', { name: /^이동$/ }))
+
+    expect(onMoveEntry).toHaveBeenCalledWith('Documents/회의록.md', 'Projects')
+  })
+
+  it('moves a dragged entry when it is dropped on a folder', async () => {
+    const onMoveEntry = vi.fn(async () => true)
+    renderTree({ onMoveEntry })
+    const values = new Map<string, string>()
+    const dataTransfer = {
+      dropEffect: 'none',
+      effectAllowed: 'none',
+      getData: (type: string) => values.get(type) ?? '',
+      setData: (type: string, value: string) => values.set(type, value),
+    }
+    const source = screen.getByRole('treeitem', { name: '회의록.md' })
+    const destination = screen.getByRole('treeitem', { name: 'Projects' })
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(destination, { dataTransfer })
+    fireEvent.drop(destination, { dataTransfer })
+
+    await waitFor(() =>
+      expect(onMoveEntry).toHaveBeenCalledWith(
+        'Documents/회의록.md',
+        'Projects',
+      ),
+    )
+  })
+
+  it('does not offer a folder itself or its descendants as destinations', async () => {
+    const user = userEvent.setup()
+    renderTree({
+      entries: [
+        ...entries,
+        {
+          kind: 'directory',
+          name: 'Archive',
+          path: 'Projects/Archive',
+        },
+      ],
+      selectedDirectoryPath: 'Projects',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Projects 작업' }))
+    await user.click(screen.getByRole('button', { name: '폴더로 이동' }))
+
+    expect(
+      screen.getByRole('option', { name: 'Documents' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: 'Projects' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: 'Projects/Archive' }),
+    ).not.toBeInTheDocument()
   })
 
   it('requires confirmation before moving an entry to trash', async () => {

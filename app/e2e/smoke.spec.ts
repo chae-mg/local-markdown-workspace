@@ -230,6 +230,78 @@ test('opens and persists a real serializable directory handle', async ({
   })
   expect(createdDirectoryName).toBe('프로젝트')
 
+  await page
+    .getByRole('button', {
+      name: 'Documents/프로젝트에 새 Markdown 문서',
+    })
+    .click()
+  await page.getByRole('textbox', { name: '새 문서 이름' }).fill('이동 테스트')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  const dragData = await page.evaluateHandle(() => new DataTransfer())
+  const draggedEntry = page.getByRole('treeitem', { name: '이동 테스트.md' })
+  const destinationDirectory = page.getByRole('treeitem', {
+    name: 'Documents',
+  })
+  await draggedEntry.dispatchEvent('dragstart', { dataTransfer: dragData })
+  await destinationDirectory.dispatchEvent('dragover', {
+    dataTransfer: dragData,
+  })
+  await destinationDirectory.dispatchEvent('drop', { dataTransfer: dragData })
+  await dragData.dispose()
+  await expect(
+    page.getByText(/Documents\/이동 테스트\.md 문서를 선택했습니다/),
+  ).toBeVisible()
+
+  const draggedDocumentLocation = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    const project = await documents.getDirectoryHandle('프로젝트')
+    let oldLocationExists = true
+    try {
+      await project.getFileHandle('이동 테스트.md')
+    } catch {
+      oldLocationExists = false
+    }
+
+    const file = await (
+      await documents.getFileHandle('이동 테스트.md')
+    ).getFile()
+    return { content: await file.text(), oldLocationExists }
+  })
+  expect(draggedDocumentLocation.content).toBe('')
+  expect(draggedDocumentLocation.oldLocationExists).toBe(false)
+
+  await page.getByRole('button', { name: '이동 테스트.md 작업' }).click()
+  await page.getByRole('button', { name: '폴더로 이동' }).click()
+  await page
+    .getByRole('combobox', { name: '이동할 폴더' })
+    .selectOption('Documents/프로젝트')
+  await page.getByRole('button', { name: '이동', exact: true }).click()
+  await expect(
+    page.getByText(/Documents\/프로젝트\/이동 테스트\.md 문서를 선택했습니다/),
+  ).toBeVisible()
+
+  const menuMovedDocumentLocation = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    const project = await documents.getDirectoryHandle('프로젝트')
+    let oldLocationExists = true
+    try {
+      await documents.getFileHandle('이동 테스트.md')
+    } catch {
+      oldLocationExists = false
+    }
+
+    const file = await (await project.getFileHandle('이동 테스트.md')).getFile()
+    return { content: await file.text(), oldLocationExists }
+  })
+  expect(menuMovedDocumentLocation.content).toBe('')
+  expect(menuMovedDocumentLocation.oldLocationExists).toBe(false)
+
   const persistedHandleName = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('local-markdown-workspace', 1)

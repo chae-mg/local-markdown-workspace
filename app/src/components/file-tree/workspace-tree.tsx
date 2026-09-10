@@ -3,6 +3,7 @@ import {
   FileText,
   FilePlus2,
   Folder,
+  FolderInput,
   FolderOpen,
   FolderPlus,
   LoaderCircle,
@@ -12,7 +13,13 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import {
+  type DragEvent,
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import type { WorkspaceEntry } from '@/domain/file-system'
 
@@ -26,6 +33,7 @@ interface WorkspaceTreeProps {
   onCreateFolder(parentPath: string, name: string): Promise<boolean>
   onCreateMarkdownFile(parentPath: string, name: string): Promise<boolean>
   onDirectorySelect(path: string): void
+  onMoveEntry(path: string, destinationPath: string): Promise<boolean>
   onMoveToTrash(path: string): Promise<boolean>
   onRefresh(): void
   onRenameEntry(path: string, name: string): Promise<boolean>
@@ -48,6 +56,39 @@ function ancestorPaths(path: string) {
     .map((_, index) => segments.slice(0, index + 1).join('/'))
 }
 
+function parentDirectoryPath(path: string) {
+  const segments = path.split('/')
+  segments.pop()
+  return segments.join('/')
+}
+
+function canMoveEntryToDirectory(
+  entry: WorkspaceEntry,
+  destinationPath: string,
+) {
+  if (destinationPath === parentDirectoryPath(entry.path)) {
+    return false
+  }
+
+  return !(
+    entry.kind === 'directory' &&
+    (destinationPath === entry.path ||
+      destinationPath.startsWith(`${entry.path}/`))
+  )
+}
+
+function moveDestinationPaths(
+  entry: WorkspaceEntry,
+  entries: WorkspaceEntry[],
+) {
+  return [
+    '',
+    ...entries
+      .filter((item) => item.kind === 'directory')
+      .map((item) => item.path),
+  ].filter((path) => canMoveEntryToDirectory(entry, path))
+}
+
 export function WorkspaceTree({
   entries,
   errorMessage,
@@ -58,6 +99,7 @@ export function WorkspaceTree({
   onCreateFolder,
   onCreateMarkdownFile,
   onDirectorySelect,
+  onMoveEntry,
   onMoveToTrash,
   onRefresh,
   onRenameEntry,
@@ -73,9 +115,12 @@ export function WorkspaceTree({
     null,
   )
   const [entryAction, setEntryAction] = useState<
-    'menu' | 'rename' | 'trash' | null
+    'menu' | 'move' | 'rename' | 'trash' | null
   >(null)
   const [entryName, setEntryName] = useState('')
+  const [moveDestinationPath, setMoveDestinationPath] = useState('')
+  const [draggedPath, setDraggedPath] = useState<string | null>(null)
+  const [dropTargetPath, setDropTargetPath] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const hasMarkdownFiles = entries.some((entry) => entry.kind === 'file')
   const visibleEntries = entries.filter((entry) =>
@@ -84,6 +129,10 @@ export function WorkspaceTree({
   const selectedActionEntry = entries.find(
     (entry) => entry.path === (selectedPath ?? selectedDirectoryPath),
   )
+  const draggedEntry = entries.find((entry) => entry.path === draggedPath)
+  const moveDestinations = selectedActionEntry
+    ? moveDestinationPaths(selectedActionEntry, entries)
+    : []
 
   const toggleDirectory = (path: string) => {
     setExpandedPaths((currentPaths) => {
@@ -102,6 +151,18 @@ export function WorkspaceTree({
       inputRef.current?.focus()
     }
   }, [creationKind, entryAction])
+
+  const expandDirectoryPath = (path: string) => {
+    setExpandedPaths((currentPaths) => {
+      const nextPaths = new Set(currentPaths)
+      for (const expandedPath of [...ancestorPaths(path), path]) {
+        if (expandedPath) {
+          nextPaths.add(expandedPath)
+        }
+      }
+      return nextPaths
+    })
+  }
 
   const startCreation = (kind: 'file' | 'folder') => {
     onClearMutationError()
@@ -128,7 +189,7 @@ export function WorkspaceTree({
     setCreationKind(null)
   }
 
-  const startEntryAction = (action: 'menu' | 'rename' | 'trash') => {
+  const startEntryAction = (action: 'menu' | 'move' | 'rename' | 'trash') => {
     if (!selectedActionEntry) {
       return
     }
@@ -136,12 +197,18 @@ export function WorkspaceTree({
     onClearMutationError()
     setCreationKind(null)
     setEntryName(action === 'rename' ? selectedActionEntry.name : '')
+    if (action === 'move') {
+      setMoveDestinationPath(
+        moveDestinationPaths(selectedActionEntry, entries)[0] ?? '',
+      )
+    }
     setEntryAction(action)
   }
 
   const cancelEntryAction = () => {
     onClearMutationError()
     setEntryName('')
+    setMoveDestinationPath('')
     setEntryAction(null)
   }
 
@@ -170,6 +237,75 @@ export function WorkspaceTree({
       setEntryName('')
       setEntryAction(null)
     }
+  }
+
+  const handleMove = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!selectedActionEntry) {
+      return
+    }
+
+    if (await onMoveEntry(selectedActionEntry.path, moveDestinationPath)) {
+      expandDirectoryPath(moveDestinationPath)
+      setMoveDestinationPath('')
+      setEntryAction(null)
+    }
+  }
+
+  const handleDragStart = (
+    event: DragEvent<HTMLButtonElement>,
+    entry: WorkspaceEntry,
+  ) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', entry.path)
+    onClearMutationError()
+    setCreationKind(null)
+    setEntryAction(null)
+    setDraggedPath(entry.path)
+  }
+
+  const handleDragOver = (
+    event: DragEvent<HTMLElement>,
+    destinationPath: string,
+  ) => {
+    const sourcePath =
+      draggedPath || event.dataTransfer.getData('text/plain') || null
+    const source = entries.find((entry) => entry.path === sourcePath)
+
+    if (!source || !canMoveEntryToDirectory(source, destinationPath)) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDropTargetPath(destinationPath)
+  }
+
+  const handleDrop = async (
+    event: DragEvent<HTMLElement>,
+    destinationPath: string,
+  ) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const sourcePath =
+      draggedPath || event.dataTransfer.getData('text/plain') || null
+    const source = entries.find((entry) => entry.path === sourcePath)
+    setDraggedPath(null)
+    setDropTargetPath(null)
+
+    if (!source || !canMoveEntryToDirectory(source, destinationPath)) {
+      return
+    }
+
+    if (await onMoveEntry(source.path, destinationPath)) {
+      expandDirectoryPath(destinationPath)
+    }
+  }
+
+  const finishDragging = () => {
+    setDraggedPath(null)
+    setDropTargetPath(null)
   }
 
   const handleMoveToTrash = async () => {
@@ -247,6 +383,20 @@ export function WorkspaceTree({
           </button>
         </div>
       </div>
+
+      {draggedEntry && canMoveEntryToDirectory(draggedEntry, '') ? (
+        <div
+          className={`mx-1 mb-2 rounded-lg border border-dashed px-3 py-2 text-center text-[11px] transition-colors ${
+            dropTargetPath === ''
+              ? 'border-amber-500 bg-amber-50 text-amber-900'
+              : 'border-stone-300 bg-stone-50 text-stone-500'
+          }`}
+          onDragOver={(event) => handleDragOver(event, '')}
+          onDrop={(event) => void handleDrop(event, '')}
+        >
+          {workspaceName} 최상위로 이동
+        </div>
+      ) : null}
 
       {creationKind ? (
         <form
@@ -328,6 +478,15 @@ export function WorkspaceTree({
             이름 변경
           </button>
           <button
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-stone-700 hover:bg-stone-100 hover:text-stone-950 disabled:text-stone-400"
+            disabled={moveDestinations.length === 0}
+            onClick={() => startEntryAction('move')}
+            type="button"
+          >
+            <FolderInput aria-hidden="true" className="size-3.5" />
+            폴더로 이동
+          </button>
+          <button
             className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-red-700 hover:bg-red-50"
             onClick={() => startEntryAction('trash')}
             type="button"
@@ -336,6 +495,70 @@ export function WorkspaceTree({
             휴지통으로 이동
           </button>
         </div>
+      ) : null}
+
+      {entryAction === 'move' && selectedActionEntry ? (
+        <form
+          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-white p-2.5 shadow-sm"
+          onSubmit={(event) => void handleMove(event)}
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-stone-800">
+                {selectedActionEntry.name} 이동
+              </p>
+              <p className="mt-0.5 text-[10px] text-stone-500">
+                이름은 그대로 유지됩니다.
+              </p>
+            </div>
+            <button
+              aria-label="이동 취소"
+              className="grid size-6 shrink-0 place-items-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+              disabled={isMutating}
+              onClick={cancelEntryAction}
+              type="button"
+            >
+              <X aria-hidden="true" className="size-3.5" />
+            </button>
+          </div>
+          {moveDestinations.length > 0 ? (
+            <select
+              aria-label="이동할 폴더"
+              className="h-8 w-full rounded-lg border border-stone-300 bg-white px-2 text-xs text-stone-700 outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
+              disabled={isMutating}
+              onChange={(event) => setMoveDestinationPath(event.target.value)}
+              value={moveDestinationPath}
+            >
+              {moveDestinations.map((path) => (
+                <option key={path || 'workspace-root'} value={path}>
+                  {path || `${workspaceName} 최상위`}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-lg bg-stone-50 px-2.5 py-2 text-[11px] text-stone-500">
+              이동 가능한 폴더가 없습니다.
+            </p>
+          )}
+          {mutationErrorMessage ? (
+            <p className="mt-2 text-[11px] leading-4 text-red-700" role="alert">
+              {mutationErrorMessage}
+            </p>
+          ) : null}
+          <button
+            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
+            disabled={isMutating || moveDestinations.length === 0}
+            type="submit"
+          >
+            {isMutating ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-3.5 animate-spin"
+              />
+            ) : null}
+            {isMutating ? '이동 중' : '이동'}
+          </button>
+        </form>
       ) : null}
 
       {entryAction === 'rename' && selectedActionEntry ? (
@@ -432,6 +655,15 @@ export function WorkspaceTree({
         </div>
       ) : null}
 
+      {!creationKind && !entryAction && mutationErrorMessage ? (
+        <div
+          className="mx-1 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800"
+          role="alert"
+        >
+          {mutationErrorMessage}
+        </div>
+      ) : null}
+
       {!errorMessage && !isLoading && !hasMarkdownFiles ? (
         <div className="mx-1 mt-3 rounded-lg border border-dashed border-stone-300 px-3 py-4 text-center text-xs leading-5 text-stone-500">
           아직 Markdown 문서가 없습니다.
@@ -457,13 +689,16 @@ export function WorkspaceTree({
                 aria-expanded={isDirectory ? isExpanded : undefined}
                 aria-level={depth + 1}
                 aria-selected={isDirectory ? isSelectedDirectory : isSelected}
-                className={`flex w-full items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-xs transition-colors ${
-                  isSelected
-                    ? 'bg-stone-200 font-medium text-stone-950'
-                    : isSelectedDirectory
-                      ? 'bg-amber-50 font-medium text-amber-950'
-                      : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'
-                }`}
+                draggable={!isMutating}
+                className={`flex w-full cursor-grab items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-xs transition-colors active:cursor-grabbing ${
+                  dropTargetPath === entry.path
+                    ? 'bg-amber-100 font-medium text-amber-950 ring-1 ring-amber-400'
+                    : isSelected
+                      ? 'bg-stone-200 font-medium text-stone-950'
+                      : isSelectedDirectory
+                        ? 'bg-amber-50 font-medium text-amber-950'
+                        : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'
+                } ${draggedPath === entry.path ? 'opacity-50' : ''}`}
                 key={entry.path}
                 onClick={() => {
                   setEntryAction(null)
@@ -477,9 +712,21 @@ export function WorkspaceTree({
 
                   onSelect(entry.path)
                 }}
+                onDragEnd={finishDragging}
+                onDragOver={
+                  isDirectory
+                    ? (event) => handleDragOver(event, entry.path)
+                    : undefined
+                }
+                onDragStart={(event) => handleDragStart(event, entry)}
+                onDrop={
+                  isDirectory
+                    ? (event) => void handleDrop(event, entry.path)
+                    : undefined
+                }
                 role="treeitem"
                 style={{ paddingLeft: `${4 + depth * 14}px` }}
-                title={entry.path}
+                title={`${entry.path} · 폴더로 드래그하여 이동`}
                 type="button"
               >
                 {isDirectory ? (

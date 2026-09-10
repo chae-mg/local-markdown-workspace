@@ -211,6 +211,66 @@ describe('WorkspaceService', () => {
     )
   })
 
+  it('moves an entry to another directory without changing its name', async () => {
+    const { fileSystem, handle, service } = createDependencies({
+      entriesByPath: { '': [], Projects: [] },
+    })
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.getFileMetadata).mockResolvedValue({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Documents/회의록.md',
+      lastModified: 1,
+      mimeType: 'text/markdown',
+      size: 10,
+    })
+
+    await expect(
+      service.moveEntry('Documents/회의록.md', 'Projects'),
+    ).resolves.toEqual({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Projects/회의록.md',
+    })
+    expect(fileSystem.moveEntry).toHaveBeenCalledWith(
+      handle,
+      'Documents/회의록.md',
+      'Projects/회의록.md',
+    )
+  })
+
+  it('rejects move collisions and moving a folder below itself', async () => {
+    const { fileSystem, service } = createDependencies({
+      entriesByPath: {
+        '': [],
+        Projects: [
+          {
+            kind: 'file',
+            name: '회의록.md',
+            path: 'Projects/회의록.md',
+          },
+        ],
+      },
+    })
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.getFileMetadata).mockResolvedValue({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Documents/회의록.md',
+      lastModified: 1,
+      mimeType: 'text/markdown',
+      size: 10,
+    })
+
+    await expect(
+      service.moveEntry('Documents/회의록.md', 'Projects'),
+    ).rejects.toMatchObject({ code: 'entry-already-exists' })
+    await expect(
+      service.moveEntry('Projects', 'Projects/Archive'),
+    ).rejects.toMatchObject({ code: 'invalid-path' })
+    expect(fileSystem.moveEntry).not.toHaveBeenCalled()
+  })
+
   it('moves an entry to a uniquely identified trash payload with metadata', async () => {
     const { fileSystem, handle, service } = createDependencies()
     await service.selectWorkspace()
