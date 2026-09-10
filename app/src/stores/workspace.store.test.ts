@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { WorkspaceError } from '@/domain/errors'
+import type { TrashEntryMetadata } from '@/domain/workspace'
 import type { WorkspaceApplicationService } from '@/services/workspace.service'
 import { createWorkspaceStore } from '@/stores/workspace.store'
 
@@ -10,12 +11,15 @@ function createService() {
     createMarkdownFile: vi.fn(
       async (_parentPath: string, name: string) => `${name}.md`,
     ),
+    emptyTrash: vi.fn(async () => 0),
     initializeWorkspace: vi.fn(),
     isSupported: vi.fn(() => true),
+    listTrashEntries: vi.fn(async (): Promise<TrashEntryMetadata[]> => []),
     moveEntryToTrash: vi.fn(),
     requestRecentWorkspacePermission: vi.fn(),
     restoreRecentWorkspace: vi.fn(async () => null),
     renameEntry: vi.fn(),
+    restoreTrashEntry: vi.fn(),
     scanWorkspace: vi.fn(async () => [
       { kind: 'directory' as const, name: 'Documents', path: 'Documents' },
       {
@@ -164,6 +168,95 @@ describe('workspace store file tree', () => {
       entries: [{ kind: 'directory', name: 'Documents', path: 'Documents' }],
       selectedDirectoryPath: 'Documents',
       selectedPath: null,
+    })
+  })
+
+  it('loads trash entries independently from the file tree', async () => {
+    const service = createService()
+    const trashEntry = {
+      version: 1 as const,
+      id: 'trash_123456',
+      originalPath: 'Documents/회의록.md',
+      payloadPath: '.workspace/trash/trash_123456/payload/회의록.md',
+      kind: 'file' as const,
+      deletedAt: '2026-09-10T12:00:00.000Z',
+    }
+    service.listTrashEntries.mockResolvedValueOnce([trashEntry])
+    const store = createWorkspaceStore(service)
+    store.setState({ status: 'ready' })
+
+    await store.getState().refreshTrash()
+
+    expect(store.getState()).toMatchObject({
+      trashEntries: [trashEntry],
+      trashErrorMessage: null,
+      trashStatus: 'ready',
+    })
+  })
+
+  it('restores a trash entry and selects the restored document', async () => {
+    const service = createService()
+    service.restoreTrashEntry.mockResolvedValueOnce({
+      kind: 'file',
+      name: '복원 회의록.md',
+      path: 'Documents/복원 회의록.md',
+    })
+    service.scanWorkspace.mockResolvedValueOnce([
+      { kind: 'directory', name: 'Documents', path: 'Documents' },
+      {
+        kind: 'file',
+        name: '복원 회의록.md',
+        path: 'Documents/복원 회의록.md',
+      },
+    ])
+    service.listTrashEntries.mockResolvedValueOnce([])
+    const store = createWorkspaceStore(service)
+    store.setState({ status: 'ready' })
+
+    await expect(
+      store.getState().restoreTrashEntry('trash_123456', '복원 회의록'),
+    ).resolves.toBe(true)
+
+    expect(service.restoreTrashEntry).toHaveBeenCalledWith(
+      'trash_123456',
+      '복원 회의록',
+    )
+    expect(store.getState()).toMatchObject({
+      mutationStatus: 'idle',
+      selectedDirectoryPath: 'Documents',
+      selectedPath: 'Documents/복원 회의록.md',
+      trashEntries: [],
+      trashStatus: 'ready',
+    })
+  })
+
+  it('empties trash only through the explicit store action', async () => {
+    const service = createService()
+    service.emptyTrash.mockResolvedValueOnce(1)
+    const store = createWorkspaceStore(service)
+    store.setState({
+      status: 'ready',
+      trashEntries: [
+        {
+          version: 1,
+          id: 'trash_123456',
+          originalPath: 'Documents/회의록.md',
+          payloadPath: '.workspace/trash/trash_123456/payload/회의록.md',
+          kind: 'file',
+          deletedAt: '2026-09-10T12:00:00.000Z',
+        },
+      ],
+      trashStatus: 'ready',
+    })
+
+    await expect(store.getState().emptyTrash()).resolves.toBe(true)
+
+    expect(service.emptyTrash).toHaveBeenCalledOnce()
+    expect(store.getState()).toMatchObject({
+      mutationStatus: 'idle',
+      trashEntries: [],
+      trashErrorMessage: null,
+      trashStatus: 'ready',
     })
   })
 

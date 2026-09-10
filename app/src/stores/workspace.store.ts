@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 import { isPickerCancellation } from '@/domain/errors'
 import type { WorkspaceEntry } from '@/domain/file-system'
-import type { WorkspaceSummary } from '@/domain/workspace'
+import type { TrashEntryMetadata, WorkspaceSummary } from '@/domain/workspace'
 import { workspaceService } from '@/app/composition-root'
 import type { WorkspaceApplicationService } from '@/services/workspace.service'
 
@@ -21,23 +21,35 @@ export interface WorkspaceStore {
   entries: WorkspaceEntry[]
   errorMessage: string | null
   mutationErrorMessage: string | null
-  mutationStatus: 'idle' | 'creating' | 'renaming' | 'trashing'
+  mutationStatus:
+    | 'idle'
+    | 'creating'
+    | 'renaming'
+    | 'trashing'
+    | 'restoring'
+    | 'emptying-trash'
   selectedDirectoryPath: string
   selectedPath: string | null
   status: WorkspaceStatus
   treeErrorMessage: string | null
   treeStatus: 'idle' | 'loading' | 'ready' | 'error'
+  trashEntries: TrashEntryMetadata[]
+  trashErrorMessage: string | null
+  trashStatus: 'idle' | 'loading' | 'ready' | 'error'
   workspace: WorkspaceSummary | null
   clearMutationError(): void
   createFolder(parentPath: string, name: string): Promise<boolean>
   createMarkdownFile(parentPath: string, name: string): Promise<boolean>
   initialize(): Promise<void>
   initializeWorkspace(): Promise<void>
+  emptyTrash(): Promise<boolean>
   openWorkspace(): Promise<void>
+  refreshTrash(): Promise<void>
   refreshWorkspace(): Promise<void>
   reconnectWorkspace(): Promise<void>
   moveEntryToTrash(path: string): Promise<boolean>
   renameEntry(path: string, name: string): Promise<boolean>
+  restoreTrashEntry(id: string, name: string): Promise<boolean>
   selectDirectory(path: string): void
   selectEntry(path: string): void
 }
@@ -89,6 +101,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
     status: 'checking',
     treeErrorMessage: null,
     treeStatus: 'idle',
+    trashEntries: [],
+    trashErrorMessage: null,
+    trashStatus: 'idle',
     workspace: null,
 
     clearMutationError() {
@@ -127,6 +142,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
               : 'permission-required',
           treeErrorMessage: null,
           treeStatus: 'idle',
+          trashEntries: [],
+          trashErrorMessage: null,
+          trashStatus: 'idle',
           workspace,
         })
       } catch (error) {
@@ -153,6 +171,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
           status: statusForWorkspace(workspace),
           treeErrorMessage: null,
           treeStatus: 'idle',
+          trashEntries: [],
+          trashErrorMessage: null,
+          trashStatus: 'idle',
           workspace,
         })
       } catch (error) {
@@ -190,6 +211,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
           status: 'ready',
           treeErrorMessage: null,
           treeStatus: 'idle',
+          trashEntries: [],
+          trashErrorMessage: null,
+          trashStatus: 'idle',
           workspace,
         })
       } catch (error) {
@@ -218,6 +242,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
           status: statusForWorkspace(workspace),
           treeErrorMessage: null,
           treeStatus: 'idle',
+          trashEntries: [],
+          trashErrorMessage: null,
+          trashStatus: 'idle',
           workspace,
         })
       } catch (error) {
@@ -274,6 +301,40 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         set({
           treeErrorMessage: messageFromError(error),
           treeStatus: 'error',
+        })
+      }
+    },
+
+    async refreshTrash() {
+      if (get().status !== 'ready' || get().trashStatus === 'loading') {
+        return
+      }
+
+      set({ trashErrorMessage: null, trashStatus: 'loading' })
+      const workspaceId = get().workspace?.manifest?.id
+
+      try {
+        const trashEntries = await service.listTrashEntries()
+
+        if (
+          get().status !== 'ready' ||
+          get().workspace?.manifest?.id !== workspaceId
+        ) {
+          return
+        }
+
+        set({ trashEntries, trashErrorMessage: null, trashStatus: 'ready' })
+      } catch (error) {
+        if (
+          get().status !== 'ready' ||
+          get().workspace?.manifest?.id !== workspaceId
+        ) {
+          return
+        }
+
+        set({
+          trashErrorMessage: messageFromError(error),
+          trashStatus: 'error',
         })
       }
     },
@@ -377,7 +438,10 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
       try {
         await service.moveEntryToTrash(path)
-        const entries = await service.scanWorkspace()
+        const [entries, trashEntries] = await Promise.all([
+          service.scanWorkspace(),
+          service.listTrashEntries(),
+        ])
         const preferredDirectory = parentDirectoryPath(path)
         set({
           entries,
@@ -390,6 +454,74 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
           selectedPath: null,
           treeErrorMessage: null,
           treeStatus: 'ready',
+          trashEntries,
+          trashErrorMessage: null,
+          trashStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    async restoreTrashEntry(id, name) {
+      if (get().status !== 'ready' || get().mutationStatus !== 'idle') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'restoring' })
+
+      try {
+        const restoredEntry = await service.restoreTrashEntry(id, name)
+        const [entries, trashEntries] = await Promise.all([
+          service.scanWorkspace(),
+          service.listTrashEntries(),
+        ])
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath:
+            restoredEntry.kind === 'directory'
+              ? restoredEntry.path
+              : parentDirectoryPath(restoredEntry.path),
+          selectedPath:
+            restoredEntry.kind === 'file' ? restoredEntry.path : null,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+          trashEntries,
+          trashErrorMessage: null,
+          trashStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    async emptyTrash() {
+      if (get().status !== 'ready' || get().mutationStatus !== 'idle') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'emptying-trash' })
+
+      try {
+        await service.emptyTrash()
+        set({
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          trashEntries: [],
+          trashErrorMessage: null,
+          trashStatus: 'ready',
         })
         return true
       } catch (error) {

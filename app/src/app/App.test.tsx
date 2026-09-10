@@ -21,6 +21,9 @@ describe('App', () => {
       status: 'checking',
       treeErrorMessage: null,
       treeStatus: 'idle',
+      trashEntries: [],
+      trashErrorMessage: null,
+      trashStatus: 'idle',
       workspace: null,
     })
   })

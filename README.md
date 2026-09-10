@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization과 Phase 3 File Tree의 생성·이름 변경·휴지통 이동까지 구현되었습니다.
+Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization과 Phase 3 File Tree의 생성·이름 변경·휴지통 복원·비우기까지 구현되었습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -123,6 +123,8 @@ Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initial
 - 기존 항목 덮어쓰기 방지와 파일명 안전성 검사
 - 파일·폴더 이름 변경과 충돌 방지
 - 휴지통 이동 시 payload, 원래 상대 경로, 삭제 시각 Metadata 보존
+- 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원
+- 되돌릴 수 없음을 확인한 뒤에만 실행되는 명시적 휴지통 비우기
 
 ## 로컬 실행
 

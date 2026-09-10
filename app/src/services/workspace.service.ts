@@ -26,13 +26,16 @@ const workspaceDirectories = ['Documents', 'Databases', 'Attachments'] as const
 export interface WorkspaceApplicationService {
   createFolder(parentPath: string, name: string): Promise<string>
   createMarkdownFile(parentPath: string, name: string): Promise<string>
+  emptyTrash(): Promise<number>
   isSupported(): boolean
+  listTrashEntries(): Promise<TrashEntryMetadata[]>
   restoreRecentWorkspace(): Promise<WorkspaceSummary | null>
   selectWorkspace(): Promise<WorkspaceSummary>
   initializeWorkspace(): Promise<WorkspaceSummary>
   requestRecentWorkspacePermission(): Promise<WorkspaceSummary>
   moveEntryToTrash(path: string): Promise<TrashEntryMetadata>
   renameEntry(path: string, name: string): Promise<WorkspaceEntry>
+  restoreTrashEntry(id: string, name: string): Promise<WorkspaceEntry>
   scanWorkspace(): Promise<WorkspaceEntry[]>
 }
 
@@ -60,6 +63,64 @@ function normalizeEntryName(name: string) {
   }
 
   return normalizedName
+}
+
+function assertTrashId(id: string) {
+  if (!/^trash_[a-zA-Z0-9]+$/.test(id)) {
+    throw new WorkspaceError('invalid-path', '유효하지 않은 휴지통 ID입니다.')
+  }
+
+  return id
+}
+
+function parseTrashEntryMetadata(content: string, expectedId: string) {
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(content)
+  } catch (error) {
+    throw new WorkspaceError(
+      'invalid-workspace',
+      '휴지통 Metadata를 읽을 수 없습니다.',
+      { cause: error },
+    )
+  }
+
+  if (
+    !isRecord(parsed) ||
+    parsed.version !== currentTrashEntryVersion ||
+    parsed.id !== expectedId ||
+    typeof parsed.originalPath !== 'string' ||
+    typeof parsed.payloadPath !== 'string' ||
+    (parsed.kind !== 'file' && parsed.kind !== 'directory') ||
+    typeof parsed.deletedAt !== 'string' ||
+    Number.isNaN(Date.parse(parsed.deletedAt))
+  ) {
+    throw new WorkspaceError(
+      'invalid-workspace',
+      '휴지통 Metadata 형식이 올바르지 않습니다.',
+    )
+  }
+
+  const originalPath = assertMutableWorkspacePath(parsed.originalPath)
+  const payloadPath = normalizeWorkspacePath(parsed.payloadPath)
+  const expectedPayloadPrefix = `.workspace/trash/${expectedId}/payload/`
+
+  if (!payloadPath.startsWith(expectedPayloadPrefix)) {
+    throw new WorkspaceError(
+      'invalid-workspace',
+      '휴지통 Payload 경로가 올바르지 않습니다.',
+    )
+  }
+
+  return {
+    version: currentTrashEntryVersion,
+    id: expectedId,
+    originalPath,
+    payloadPath,
+    kind: parsed.kind,
+    deletedAt: parsed.deletedAt,
+  } satisfies TrashEntryMetadata
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -346,6 +407,92 @@ export class WorkspaceService<
     return metadata
   }
 
+  async listTrashEntries() {
+    const root = this.getCurrentHandle()
+    const entries = await this.fileSystem.listDirectory(
+      root,
+      '.workspace/trash',
+    )
+    const trashEntries: TrashEntryMetadata[] = []
+
+    for (const entry of entries) {
+      if (entry.kind !== 'directory' || !entry.name.startsWith('trash_')) {
+        continue
+      }
+
+      const id = assertTrashId(entry.name)
+      trashEntries.push(await this.readTrashEntryMetadata(root, id))
+    }
+
+    return trashEntries.sort(
+      (left, right) => Date.parse(right.deletedAt) - Date.parse(left.deletedAt),
+    )
+  }
+
+  async restoreTrashEntry(id: string, name: string) {
+    const root = this.getCurrentHandle()
+    const normalizedId = assertTrashId(id)
+    const metadata = await this.readTrashEntryMetadata(root, normalizedId)
+    const originalSegments = splitWorkspacePath(metadata.originalPath)
+    originalSegments.pop()
+    const parentPath = originalSegments.join('/')
+    const normalizedName = normalizeEntryName(name)
+    const restoredName =
+      metadata.kind === 'file' && !normalizedName.toLowerCase().endsWith('.md')
+        ? `${normalizedName}.md`
+        : normalizedName
+
+    if (metadata.kind === 'file' && restoredName.toLowerCase() === '.md') {
+      throw new WorkspaceError('invalid-path', '문서 이름을 입력해주세요.')
+    }
+
+    const restoredPath = assertMutableWorkspacePath(
+      joinWorkspacePath(parentPath, restoredName),
+    )
+
+    if (parentPath) {
+      await this.fileSystem.createDirectory(root, parentPath)
+    }
+    await this.assertEntryAvailable(root, parentPath, restoredName)
+    await this.fileSystem.moveEntry(root, metadata.payloadPath, restoredPath, {
+      allowProtected: true,
+    })
+
+    const trashEntryPath = `.workspace/trash/${normalizedId}`
+    await this.fileSystem.deleteEntry(root, `${trashEntryPath}/metadata.json`, {
+      allowProtected: true,
+    })
+    await this.fileSystem
+      .deleteEntry(root, trashEntryPath, {
+        allowProtected: true,
+        recursive: true,
+      })
+      .catch(() => undefined)
+
+    return {
+      kind: metadata.kind,
+      name: restoredName,
+      path: restoredPath,
+    }
+  }
+
+  async emptyTrash() {
+    const root = this.getCurrentHandle()
+    const entries = await this.fileSystem.listDirectory(
+      root,
+      '.workspace/trash',
+    )
+
+    for (const entry of entries) {
+      await this.fileSystem.deleteEntry(root, entry.path, {
+        allowProtected: true,
+        recursive: entry.kind === 'directory',
+      })
+    }
+
+    return entries.length
+  }
+
   getCurrentHandle() {
     if (!this.currentHandle) {
       throw new WorkspaceError(
@@ -470,6 +617,15 @@ export class WorkspaceService<
         '같은 위치에 동일한 이름의 파일 또는 폴더가 있습니다.',
       )
     }
+  }
+
+  private async readTrashEntryMetadata(root: DirectoryHandle, id: string) {
+    const normalizedId = assertTrashId(id)
+    const content = await this.fileSystem.readTextFile(
+      root,
+      `.workspace/trash/${normalizedId}/metadata.json`,
+    )
+    return parseTrashEntryMetadata(content, normalizedId)
   }
 
   private async ensurePermission(

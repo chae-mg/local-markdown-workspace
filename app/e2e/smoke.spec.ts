@@ -157,6 +157,65 @@ test('opens and persists a real serializable directory handle', async ({
   )
   expect(Date.parse(trashedDocument.metadata.deletedAt)).not.toBeNaN()
 
+  await page.getByRole('button', { name: '업무 일지.md 복원' }).click()
+  await page.getByRole('textbox', { name: '복원할 이름' }).fill('복원 일지')
+  await page.getByRole('button', { name: '복원', exact: true }).click()
+  await expect(
+    page.getByRole('treeitem', { name: '복원 일지.md' }),
+  ).toBeVisible()
+
+  const restoredDocument = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    const content = await (
+      await documents.getFileHandle('복원 일지.md')
+    ).getFile()
+    const metadataRoot = await workspace.getDirectoryHandle('.workspace')
+    const trashRoot = await metadataRoot.getDirectoryHandle('trash')
+    const trashEntries: string[] = []
+    for await (const entry of trashRoot.values()) {
+      trashEntries.push(entry.name)
+    }
+
+    return { content: await content.text(), trashEntries }
+  })
+
+  expect(restoredDocument.content).toBe('')
+  expect(restoredDocument.trashEntries).toEqual([])
+
+  await page
+    .getByRole('button', { name: 'Documents에 새 Markdown 문서' })
+    .click()
+  await page
+    .getByRole('textbox', { name: '새 문서 이름' })
+    .fill('영구 삭제 대상')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await page.getByRole('button', { name: '영구 삭제 대상.md 작업' }).click()
+  await page.getByRole('button', { name: '휴지통으로 이동' }).click()
+  await page.getByRole('button', { name: '휴지통으로 이동' }).click()
+  await page.getByRole('button', { name: '휴지통 비우기' }).click()
+  await expect(
+    page.getByText('휴지통의 1개 항목을 영구 삭제할까요?'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '영구 삭제', exact: true }).click()
+  await expect(page.getByText('휴지통이 비어 있습니다.').first()).toBeVisible()
+
+  const emptyTrashEntries = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const metadataRoot = await workspace.getDirectoryHandle('.workspace')
+    const trashRoot = await metadataRoot.getDirectoryHandle('trash')
+    const entries: string[] = []
+    for await (const entry of trashRoot.values()) {
+      entries.push(entry.name)
+    }
+    return entries
+  })
+  expect(emptyTrashEntries).toEqual([])
+
   await page.getByRole('button', { name: 'Documents에 새 폴더' }).click()
   await page.getByRole('textbox', { name: '새 폴더 이름' }).fill('프로젝트')
   await page.getByRole('button', { name: '생성', exact: true }).click()

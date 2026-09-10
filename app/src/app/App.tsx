@@ -13,6 +13,7 @@ import {
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceStore } from '@/stores/workspace.store'
@@ -28,6 +29,7 @@ function WelcomePage() {
     clearMutationError,
     createFolder,
     createMarkdownFile,
+    emptyTrash,
     entries,
     errorMessage,
     initialize,
@@ -36,9 +38,11 @@ function WelcomePage() {
     openWorkspace,
     refreshWorkspace,
     reconnectWorkspace,
+    refreshTrash,
     mutationErrorMessage,
     mutationStatus,
     renameEntry,
+    restoreTrashEntry,
     selectedDirectoryPath,
     selectedPath,
     selectDirectory,
@@ -46,6 +50,9 @@ function WelcomePage() {
     status,
     treeErrorMessage,
     treeStatus,
+    trashEntries,
+    trashErrorMessage,
+    trashStatus,
     workspace,
   } = useWorkspaceStore()
 
@@ -56,8 +63,9 @@ function WelcomePage() {
   useEffect(() => {
     if (status === 'ready') {
       void refreshWorkspace()
+      void refreshTrash()
     }
-  }, [refreshWorkspace, status, workspace?.manifest?.id])
+  }, [refreshTrash, refreshWorkspace, status, workspace?.manifest?.id])
 
   const isInitializing = status === 'initializing'
   const isOpening =
@@ -121,25 +129,38 @@ function WelcomePage() {
           </nav>
 
           {isReady && workspace ? (
-            <WorkspaceTree
-              entries={entries}
-              errorMessage={treeErrorMessage}
-              isLoading={treeStatus === 'loading'}
-              isMutating={mutationStatus !== 'idle'}
-              key={workspace.manifest?.id ?? workspace.name}
-              mutationErrorMessage={mutationErrorMessage}
-              onClearMutationError={clearMutationError}
-              onCreateFolder={createFolder}
-              onCreateMarkdownFile={createMarkdownFile}
-              onDirectorySelect={selectDirectory}
-              onMoveToTrash={moveEntryToTrash}
-              onRefresh={() => void refreshWorkspace()}
-              onRenameEntry={renameEntry}
-              onSelect={selectEntry}
-              selectedDirectoryPath={selectedDirectoryPath}
-              selectedPath={selectedPath}
-              workspaceName={workspace.name}
-            />
+            <>
+              <WorkspaceTree
+                entries={entries}
+                errorMessage={treeErrorMessage}
+                isLoading={treeStatus === 'loading'}
+                isMutating={mutationStatus !== 'idle'}
+                key={workspace.manifest?.id ?? workspace.name}
+                mutationErrorMessage={mutationErrorMessage}
+                onClearMutationError={clearMutationError}
+                onCreateFolder={createFolder}
+                onCreateMarkdownFile={createMarkdownFile}
+                onDirectorySelect={selectDirectory}
+                onMoveToTrash={moveEntryToTrash}
+                onRefresh={() => void refreshWorkspace()}
+                onRenameEntry={renameEntry}
+                onSelect={selectEntry}
+                selectedDirectoryPath={selectedDirectoryPath}
+                selectedPath={selectedPath}
+                workspaceName={workspace.name}
+              />
+              <WorkspaceTrash
+                entries={trashEntries}
+                errorMessage={trashErrorMessage}
+                isLoading={trashStatus === 'loading'}
+                isMutating={mutationStatus !== 'idle'}
+                mutationErrorMessage={mutationErrorMessage}
+                onClearMutationError={clearMutationError}
+                onEmpty={emptyTrash}
+                onRefresh={() => void refreshTrash()}
+                onRestore={restoreTrashEntry}
+              />
+            </>
           ) : null}
 
           <div className="mt-auto rounded-2xl border border-stone-200 bg-white p-4">
@@ -245,6 +266,17 @@ function WelcomePage() {
                     selectedDirectoryPath={selectedDirectoryPath}
                     selectedPath={selectedPath}
                     workspaceName={workspace.name}
+                  />
+                  <WorkspaceTrash
+                    entries={trashEntries}
+                    errorMessage={trashErrorMessage}
+                    isLoading={trashStatus === 'loading'}
+                    isMutating={mutationStatus !== 'idle'}
+                    mutationErrorMessage={mutationErrorMessage}
+                    onClearMutationError={clearMutationError}
+                    onEmpty={emptyTrash}
+                    onRefresh={() => void refreshTrash()}
+                    onRestore={restoreTrashEntry}
                   />
                 </div>
               ) : null}

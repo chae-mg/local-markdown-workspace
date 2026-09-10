@@ -14,6 +14,7 @@ const workspaceId = 'ws_123456'
 
 function createDependencies(options?: {
   entriesByPath?: Record<string, WorkspaceEntry[]>
+  fileContentsByPath?: Record<string, string>
   manifestContent?: string
   permission?: PermissionState
   recentWorkspace?: RecentWorkspace<FakeHandle> | null
@@ -23,6 +24,7 @@ function createDependencies(options?: {
   const entriesByPath = options?.entriesByPath ?? { '': [] }
   const fileSystem = {
     createDirectory: vi.fn(async () => undefined),
+    deleteEntry: vi.fn(async () => undefined),
     getDirectoryName: vi.fn(() => handle.name),
     isSupported: vi.fn(() => true),
     listDirectory: vi.fn(
@@ -31,7 +33,10 @@ function createDependencies(options?: {
     getFileMetadata: vi.fn(),
     moveEntry: vi.fn(async () => undefined),
     queryPermission: vi.fn(async () => permission),
-    readTextFile: vi.fn(async () => options?.manifestContent ?? ''),
+    readTextFile: vi.fn(
+      async (_handle: FakeHandle, path: string) =>
+        options?.fileContentsByPath?.[path] ?? options?.manifestContent ?? '',
+    ),
     requestPermission: vi.fn(async () => 'granted' as PermissionState),
     selectDirectory: vi.fn(async () => handle),
     writeTextFile: vi.fn(async () => undefined),
@@ -244,6 +249,95 @@ describe('WorkspaceService', () => {
       'Documents/회의록.md',
       '.workspace/trash/trash_123456/payload/회의록.md',
       { allowProtected: true },
+    )
+  })
+
+  it('lists and restores trash entries to their original parent', async () => {
+    const trashMetadata = {
+      version: 1,
+      id: 'trash_123456',
+      originalPath: 'Documents/회의록.md',
+      payloadPath: '.workspace/trash/trash_123456/payload/회의록.md',
+      kind: 'file',
+      deletedAt: now.toISOString(),
+    }
+    const { fileSystem, handle, service } = createDependencies({
+      entriesByPath: {
+        '': [],
+        '.workspace/trash': [
+          {
+            kind: 'directory',
+            name: 'trash_123456',
+            path: '.workspace/trash/trash_123456',
+          },
+        ],
+        Documents: [],
+      },
+      fileContentsByPath: {
+        '.workspace/trash/trash_123456/metadata.json':
+          JSON.stringify(trashMetadata),
+      },
+    })
+    await service.selectWorkspace()
+
+    await expect(service.listTrashEntries()).resolves.toEqual([trashMetadata])
+    await expect(
+      service.restoreTrashEntry('trash_123456', '복원 문서'),
+    ).resolves.toEqual({
+      kind: 'file',
+      name: '복원 문서.md',
+      path: 'Documents/복원 문서.md',
+    })
+    expect(fileSystem.moveEntry).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/trash_123456/payload/회의록.md',
+      'Documents/복원 문서.md',
+      { allowProtected: true },
+    )
+    expect(fileSystem.deleteEntry).toHaveBeenNthCalledWith(
+      1,
+      handle,
+      '.workspace/trash/trash_123456/metadata.json',
+      { allowProtected: true },
+    )
+    expect(fileSystem.deleteEntry).toHaveBeenNthCalledWith(
+      2,
+      handle,
+      '.workspace/trash/trash_123456',
+      { allowProtected: true, recursive: true },
+    )
+  })
+
+  it('permanently removes trash contents only through emptyTrash', async () => {
+    const { fileSystem, handle, service } = createDependencies({
+      entriesByPath: {
+        '': [],
+        '.workspace/trash': [
+          {
+            kind: 'directory',
+            name: 'trash_123456',
+            path: '.workspace/trash/trash_123456',
+          },
+          {
+            kind: 'file',
+            name: 'orphan.tmp',
+            path: '.workspace/trash/orphan.tmp',
+          },
+        ],
+      },
+    })
+    await service.selectWorkspace()
+
+    await expect(service.emptyTrash()).resolves.toBe(2)
+    expect(fileSystem.deleteEntry).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/trash_123456',
+      { allowProtected: true, recursive: true },
+    )
+    expect(fileSystem.deleteEntry).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/orphan.tmp',
+      { allowProtected: true, recursive: false },
     )
   })
 
