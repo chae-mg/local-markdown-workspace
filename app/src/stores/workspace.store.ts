@@ -21,7 +21,7 @@ export interface WorkspaceStore {
   entries: WorkspaceEntry[]
   errorMessage: string | null
   mutationErrorMessage: string | null
-  mutationStatus: 'idle' | 'creating'
+  mutationStatus: 'idle' | 'creating' | 'renaming' | 'trashing'
   selectedDirectoryPath: string
   selectedPath: string | null
   status: WorkspaceStatus
@@ -36,6 +36,8 @@ export interface WorkspaceStore {
   openWorkspace(): Promise<void>
   refreshWorkspace(): Promise<void>
   reconnectWorkspace(): Promise<void>
+  moveEntryToTrash(path: string): Promise<boolean>
+  renameEntry(path: string, name: string): Promise<boolean>
   selectDirectory(path: string): void
   selectEntry(path: string): void
 }
@@ -48,6 +50,32 @@ function messageFromError(error: unknown) {
 
 function statusForWorkspace(workspace: WorkspaceSummary): WorkspaceStatus {
   return workspace.initialized ? 'ready' : 'initialization-required'
+}
+
+function parentDirectoryPath(path: string) {
+  const segments = path.split('/')
+  segments.pop()
+  return segments.join('/')
+}
+
+function resolveDirectorySelection(
+  entries: WorkspaceEntry[],
+  preferredPath: string,
+) {
+  if (
+    preferredPath === '' ||
+    entries.some(
+      (entry) => entry.kind === 'directory' && entry.path === preferredPath,
+    )
+  ) {
+    return preferredPath
+  }
+
+  return entries.some(
+    (entry) => entry.kind === 'directory' && entry.path === 'Documents',
+  )
+    ? 'Documents'
+    : ''
 }
 
 export function createWorkspaceStore(service: WorkspaceApplicationService) {
@@ -220,20 +248,10 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
         set((state) => ({
           entries,
-          selectedDirectoryPath:
-            state.selectedDirectoryPath === '' ||
-            entries.some(
-              (entry) =>
-                entry.kind === 'directory' &&
-                entry.path === state.selectedDirectoryPath,
-            )
-              ? state.selectedDirectoryPath
-              : entries.some(
-                    (entry) =>
-                      entry.kind === 'directory' && entry.path === 'Documents',
-                  )
-                ? 'Documents'
-                : '',
+          selectedDirectoryPath: resolveDirectorySelection(
+            entries,
+            state.selectedDirectoryPath,
+          ),
           selectedPath:
             state.selectedPath &&
             entries.some(
@@ -318,13 +336,78 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
       }
     },
 
+    async renameEntry(path, name) {
+      if (get().status !== 'ready' || get().mutationStatus !== 'idle') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'renaming' })
+
+      try {
+        const renamedEntry = await service.renameEntry(path, name)
+        const entries = await service.scanWorkspace()
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath:
+            renamedEntry.kind === 'directory'
+              ? renamedEntry.path
+              : parentDirectoryPath(renamedEntry.path),
+          selectedPath: renamedEntry.kind === 'file' ? renamedEntry.path : null,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    async moveEntryToTrash(path) {
+      if (get().status !== 'ready' || get().mutationStatus !== 'idle') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'trashing' })
+
+      try {
+        await service.moveEntryToTrash(path)
+        const entries = await service.scanWorkspace()
+        const preferredDirectory = parentDirectoryPath(path)
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: resolveDirectorySelection(
+            entries,
+            preferredDirectory,
+          ),
+          selectedPath: null,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
     selectDirectory(path) {
       const isDirectory = get().entries.some(
         (entry) => entry.kind === 'directory' && entry.path === path,
       )
 
       if (isDirectory) {
-        set({ selectedDirectoryPath: path })
+        set({ selectedDirectoryPath: path, selectedPath: null })
       }
     },
 
@@ -334,7 +417,10 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
       )
 
       if (isMarkdownFile) {
-        set({ selectedPath: path })
+        set({
+          selectedDirectoryPath: parentDirectoryPath(path),
+          selectedPath: path,
+        })
       }
     },
   }))

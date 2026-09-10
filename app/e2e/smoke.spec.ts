@@ -92,6 +92,71 @@ test('opens and persists a real serializable directory handle', async ({
   })
   expect(createdDocumentContent).toBe('')
 
+  await page.getByRole('button', { name: '작업 일지.md 작업' }).click()
+  await page.getByRole('button', { name: '이름 변경', exact: true }).click()
+  await page.getByRole('textbox', { name: '변경할 이름' }).fill('업무 일지')
+  await page.getByRole('button', { name: '이름 변경', exact: true }).click()
+  await expect(
+    page.getByRole('treeitem', { name: '업무 일지.md' }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: '업무 일지.md 작업' }).click()
+  await page.getByRole('button', { name: '휴지통으로 이동' }).click()
+  await expect(page.getByText(/휴지통으로 이동할까요/)).toBeVisible()
+  await page.getByRole('button', { name: '휴지통으로 이동' }).click()
+  await expect(
+    page.getByRole('treeitem', { name: '업무 일지.md' }),
+  ).not.toBeVisible()
+
+  const trashedDocument = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    let sourceExists = true
+    try {
+      await documents.getFileHandle('업무 일지.md')
+    } catch {
+      sourceExists = false
+    }
+
+    const metadataRoot = await workspace.getDirectoryHandle('.workspace')
+    const trashRoot = await metadataRoot.getDirectoryHandle('trash')
+    const trashEntries: FileSystemHandle[] = []
+    for await (const entry of trashRoot.values()) {
+      trashEntries.push(entry)
+    }
+    const trashEntry = trashEntries[0] as FileSystemDirectoryHandle
+    const metadataFile = await (
+      await trashEntry.getFileHandle('metadata.json')
+    ).getFile()
+    const metadata = JSON.parse(await metadataFile.text()) as {
+      id: string
+      originalPath: string
+      payloadPath: string
+      kind: string
+      deletedAt: string
+    }
+    const payload = await trashEntry.getDirectoryHandle('payload')
+    const payloadText = await (
+      await (await payload.getFileHandle('업무 일지.md')).getFile()
+    ).text()
+
+    return { metadata, payloadText, sourceExists }
+  })
+
+  expect(trashedDocument.sourceExists).toBe(false)
+  expect(trashedDocument.payloadText).toBe('')
+  expect(trashedDocument.metadata).toMatchObject({
+    originalPath: 'Documents/업무 일지.md',
+    kind: 'file',
+  })
+  expect(trashedDocument.metadata.id).toMatch(/^trash_/)
+  expect(trashedDocument.metadata.payloadPath).toContain(
+    `${trashedDocument.metadata.id}/payload/업무 일지.md`,
+  )
+  expect(Date.parse(trashedDocument.metadata.deletedAt)).not.toBeNaN()
+
   await page.getByRole('button', { name: 'Documents에 새 폴더' }).click()
   await page.getByRole('textbox', { name: '새 폴더 이름' }).fill('프로젝트')
   await page.getByRole('button', { name: '생성', exact: true }).click()

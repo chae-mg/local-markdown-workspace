@@ -5,13 +5,20 @@ import type {
 } from '@/domain/file-system'
 import { WorkspaceError } from '@/domain/errors'
 import {
+  currentTrashEntryVersion,
   currentWorkspaceVersion,
+  type TrashEntryMetadata,
   type WorkspaceManifest,
   type WorkspaceSummary,
 } from '@/domain/workspace'
 import type { FileSystemService } from '@/services/file-system.service'
 import type { RecentWorkspaceStore } from '@/services/recent-workspace.store'
-import { joinWorkspacePath, normalizeWorkspacePath } from '@/utils/path'
+import {
+  assertMutableWorkspacePath,
+  joinWorkspacePath,
+  normalizeWorkspacePath,
+  splitWorkspacePath,
+} from '@/utils/path'
 
 const workspaceManifestPath = '.workspace/workspace.json'
 const workspaceDirectories = ['Documents', 'Databases', 'Attachments'] as const
@@ -24,6 +31,8 @@ export interface WorkspaceApplicationService {
   selectWorkspace(): Promise<WorkspaceSummary>
   initializeWorkspace(): Promise<WorkspaceSummary>
   requestRecentWorkspacePermission(): Promise<WorkspaceSummary>
+  moveEntryToTrash(path: string): Promise<TrashEntryMetadata>
+  renameEntry(path: string, name: string): Promise<WorkspaceEntry>
   scanWorkspace(): Promise<WorkspaceEntry[]>
 }
 
@@ -125,6 +134,8 @@ export class WorkspaceService<
     private readonly now: () => Date = () => new Date(),
     private readonly createWorkspaceId: () => string = () =>
       `ws_${crypto.randomUUID().replaceAll('-', '')}`,
+    private readonly createTrashId: () => string = () =>
+      `trash_${crypto.randomUUID().replaceAll('-', '')}`,
   ) {}
 
   isSupported() {
@@ -265,6 +276,74 @@ export class WorkspaceService<
     const path = joinWorkspacePath(normalizedParentPath, folderName)
     await this.fileSystem.createDirectory(root, path)
     return path
+  }
+
+  async renameEntry(path: string, name: string) {
+    const root = this.getCurrentHandle()
+    const normalizedSourcePath = assertMutableWorkspacePath(path)
+    const source = await this.fileSystem.getFileMetadata(
+      root,
+      normalizedSourcePath,
+    )
+    const sourceSegments = splitWorkspacePath(normalizedSourcePath)
+    sourceSegments.pop()
+    const parentPath = sourceSegments.join('/')
+    const normalizedName = normalizeEntryName(name)
+    const destinationName =
+      source.kind === 'file' && !normalizedName.toLowerCase().endsWith('.md')
+        ? `${normalizedName}.md`
+        : normalizedName
+
+    if (source.kind === 'file' && destinationName.toLowerCase() === '.md') {
+      throw new WorkspaceError('invalid-path', '문서 이름을 입력해주세요.')
+    }
+
+    const destinationPath = joinWorkspacePath(parentPath, destinationName)
+
+    if (destinationPath === normalizedSourcePath) {
+      return { kind: source.kind, name: source.name, path: source.path }
+    }
+
+    await this.assertEntryAvailable(root, parentPath, destinationName)
+    await this.fileSystem.moveEntry(root, normalizedSourcePath, destinationPath)
+    return {
+      kind: source.kind,
+      name: destinationName,
+      path: destinationPath,
+    }
+  }
+
+  async moveEntryToTrash(path: string) {
+    const root = this.getCurrentHandle()
+    const originalPath = assertMutableWorkspacePath(path)
+    const source = await this.fileSystem.getFileMetadata(root, originalPath)
+    const id = this.createTrashId()
+    const trashEntryPath = `.workspace/trash/${id}`
+    const payloadPath = `${trashEntryPath}/payload/${source.name}`
+    const metadataPath = `${trashEntryPath}/metadata.json`
+    const metadata: TrashEntryMetadata = {
+      version: currentTrashEntryVersion,
+      id,
+      originalPath,
+      payloadPath,
+      kind: source.kind,
+      deletedAt: this.now().toISOString(),
+    }
+
+    await this.assertEntryAvailable(root, '.workspace/trash', id)
+    await this.fileSystem.createDirectory(root, `${trashEntryPath}/payload`, {
+      allowProtected: true,
+    })
+    await this.fileSystem.writeTextFile(
+      root,
+      metadataPath,
+      `${JSON.stringify(metadata, null, 2)}\n`,
+      { allowProtected: true },
+    )
+    await this.fileSystem.moveEntry(root, originalPath, payloadPath, {
+      allowProtected: true,
+    })
+    return metadata
   }
 
   getCurrentHandle() {

@@ -28,6 +28,8 @@ function createDependencies(options?: {
     listDirectory: vi.fn(
       async (_handle: FakeHandle, path = '') => entriesByPath[path] ?? [],
     ),
+    getFileMetadata: vi.fn(),
+    moveEntry: vi.fn(async () => undefined),
     queryPermission: vi.fn(async () => permission),
     readTextFile: vi.fn(async () => options?.manifestContent ?? ''),
     requestPermission: vi.fn(async () => 'granted' as PermissionState),
@@ -48,6 +50,7 @@ function createDependencies(options?: {
     store,
     () => now,
     () => workspaceId,
+    () => 'trash_123456',
   )
 
   return { fileSystem, handle, saved, service, store }
@@ -173,6 +176,75 @@ describe('WorkspaceService', () => {
       service.createFolder('Documents', '잘못된?폴더'),
     ).rejects.toMatchObject({ code: 'invalid-path' })
     expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
+  })
+
+  it('renames an entry by moving it without overwriting a sibling', async () => {
+    const { fileSystem, handle, service } = createDependencies({
+      entriesByPath: { '': [], Documents: [] },
+    })
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.getFileMetadata).mockResolvedValue({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Documents/회의록.md',
+      lastModified: 1,
+      mimeType: 'text/markdown',
+      size: 10,
+    })
+
+    await expect(
+      service.renameEntry('Documents/회의록.md', '주간회의'),
+    ).resolves.toEqual({
+      kind: 'file',
+      name: '주간회의.md',
+      path: 'Documents/주간회의.md',
+    })
+    expect(fileSystem.moveEntry).toHaveBeenCalledWith(
+      handle,
+      'Documents/회의록.md',
+      'Documents/주간회의.md',
+    )
+  })
+
+  it('moves an entry to a uniquely identified trash payload with metadata', async () => {
+    const { fileSystem, handle, service } = createDependencies()
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.getFileMetadata).mockResolvedValue({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Documents/회의록.md',
+      lastModified: 1,
+      mimeType: 'text/markdown',
+      size: 10,
+    })
+
+    await expect(
+      service.moveEntryToTrash('Documents/회의록.md'),
+    ).resolves.toEqual({
+      version: 1,
+      id: 'trash_123456',
+      originalPath: 'Documents/회의록.md',
+      payloadPath: '.workspace/trash/trash_123456/payload/회의록.md',
+      kind: 'file',
+      deletedAt: now.toISOString(),
+    })
+    expect(fileSystem.createDirectory).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/trash_123456/payload',
+      { allowProtected: true },
+    )
+    expect(fileSystem.writeTextFile).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/trash_123456/metadata.json',
+      expect.stringContaining('"originalPath": "Documents/회의록.md"'),
+      { allowProtected: true },
+    )
+    expect(fileSystem.moveEntry).toHaveBeenCalledWith(
+      handle,
+      'Documents/회의록.md',
+      '.workspace/trash/trash_123456/payload/회의록.md',
+      { allowProtected: true },
+    )
   })
 
   it('restores an existing manifest without changing its immutable ID', async () => {

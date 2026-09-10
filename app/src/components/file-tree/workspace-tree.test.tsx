@@ -33,7 +33,9 @@ function renderTree(
     onCreateFolder: vi.fn(async () => true),
     onCreateMarkdownFile: vi.fn(async () => true),
     onDirectorySelect: vi.fn(),
+    onMoveToTrash: vi.fn(async () => true),
     onRefresh: vi.fn(),
+    onRenameEntry: vi.fn(async () => true),
     onSelect: vi.fn(),
     selectedDirectoryPath: 'Documents',
     selectedPath: null,
@@ -125,5 +127,42 @@ describe('WorkspaceTree', () => {
     await user.click(screen.getByRole('treeitem', { name: 'Projects' }))
 
     expect(onDirectorySelect).toHaveBeenCalledWith('Projects')
+  })
+
+  it('renames the selected document from the item action menu', async () => {
+    const user = userEvent.setup()
+    const onRenameEntry = vi.fn(async () => true)
+    renderTree({
+      onRenameEntry,
+      selectedPath: 'Documents/회의록.md',
+    })
+
+    await user.click(screen.getByRole('button', { name: '회의록.md 작업' }))
+    await user.click(screen.getByRole('button', { name: '이름 변경' }))
+    const input = screen.getByRole('textbox', { name: '변경할 이름' })
+    await user.clear(input)
+    await user.type(input, '주간회의.md')
+    await user.click(screen.getByRole('button', { name: '이름 변경' }))
+
+    expect(onRenameEntry).toHaveBeenCalledWith(
+      'Documents/회의록.md',
+      '주간회의.md',
+    )
+  })
+
+  it('requires confirmation before moving an entry to trash', async () => {
+    const user = userEvent.setup()
+    const onMoveToTrash = vi.fn(async () => true)
+    renderTree({
+      onMoveToTrash,
+      selectedPath: 'Documents/회의록.md',
+    })
+
+    await user.click(screen.getByRole('button', { name: '회의록.md 작업' }))
+    await user.click(screen.getByRole('button', { name: '휴지통으로 이동' }))
+    expect(screen.getByText(/휴지통으로 이동할까요/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '휴지통으로 이동' }))
+
+    expect(onMoveToTrash).toHaveBeenCalledWith('Documents/회의록.md')
   })
 })

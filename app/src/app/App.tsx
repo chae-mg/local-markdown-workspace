@@ -32,11 +32,13 @@ function WelcomePage() {
     errorMessage,
     initialize,
     initializeWorkspace,
+    moveEntryToTrash,
     openWorkspace,
     refreshWorkspace,
     reconnectWorkspace,
     mutationErrorMessage,
     mutationStatus,
+    renameEntry,
     selectedDirectoryPath,
     selectedPath,
     selectDirectory,
@@ -123,14 +125,16 @@ function WelcomePage() {
               entries={entries}
               errorMessage={treeErrorMessage}
               isLoading={treeStatus === 'loading'}
-              isMutating={mutationStatus === 'creating'}
+              isMutating={mutationStatus !== 'idle'}
               key={workspace.manifest?.id ?? workspace.name}
               mutationErrorMessage={mutationErrorMessage}
               onClearMutationError={clearMutationError}
               onCreateFolder={createFolder}
               onCreateMarkdownFile={createMarkdownFile}
               onDirectorySelect={selectDirectory}
+              onMoveToTrash={moveEntryToTrash}
               onRefresh={() => void refreshWorkspace()}
+              onRenameEntry={renameEntry}
               onSelect={selectEntry}
               selectedDirectoryPath={selectedDirectoryPath}
               selectedPath={selectedPath}
@@ -217,7 +221,7 @@ function WelcomePage() {
                   : isReady
                     ? selectedPath
                       ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
-                      : '왼쪽 파일 트리에서 폴더를 선택하고 새 Markdown 문서나 폴더를 만들 수 있습니다. 같은 이름의 기존 항목은 덮어쓰지 않습니다.'
+                      : '왼쪽 파일 트리에서 문서와 폴더를 만들고, 선택한 항목의 이름을 바꾸거나 휴지통으로 이동할 수 있습니다. 기존 항목은 덮어쓰지 않습니다.'
                     : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
               </p>
 
@@ -227,14 +231,16 @@ function WelcomePage() {
                     entries={entries}
                     errorMessage={treeErrorMessage}
                     isLoading={treeStatus === 'loading'}
-                    isMutating={mutationStatus === 'creating'}
+                    isMutating={mutationStatus !== 'idle'}
                     key={`mobile-${workspace.manifest?.id ?? workspace.name}`}
                     mutationErrorMessage={mutationErrorMessage}
                     onClearMutationError={clearMutationError}
                     onCreateFolder={createFolder}
                     onCreateMarkdownFile={createMarkdownFile}
                     onDirectorySelect={selectDirectory}
+                    onMoveToTrash={moveEntryToTrash}
                     onRefresh={() => void refreshWorkspace()}
+                    onRenameEntry={renameEntry}
                     onSelect={selectEntry}
                     selectedDirectoryPath={selectedDirectoryPath}
                     selectedPath={selectedPath}

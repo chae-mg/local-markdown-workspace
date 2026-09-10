@@ -1,4 +1,7 @@
+import type { WorkspaceEntryKind } from '@/domain/file-system'
+
 export const currentWorkspaceVersion = 1
+export const currentTrashEntryVersion = 1
 
 export interface WorkspaceManifest {
   workspaceVersion: typeof currentWorkspaceVersion
@@ -13,4 +16,13 @@ export interface WorkspaceSummary {
   lastOpened: string
   name: string
   permission: PermissionState
+}
+
+export interface TrashEntryMetadata {
+  version: typeof currentTrashEntryVersion
+  id: string
+  originalPath: string
+  payloadPath: string
+  kind: WorkspaceEntryKind
+  deletedAt: string
 }
