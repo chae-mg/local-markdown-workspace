@@ -9,7 +9,7 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 3 · File Tree')).toBeVisible()
+  await expect(page.getByText('Phase 5 · Editor')).toBeVisible()
 })
 
 test('opens and persists a real serializable directory handle', async ({
@@ -80,6 +80,46 @@ test('opens and persists a real serializable directory handle', async ({
   await expect(
     page.getByRole('treeitem', { name: '작업 일지.md' }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: '작업 일지.md' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await page
+    .getByRole('textbox', { name: 'Markdown 원문' })
+    .fill('# 작업 일지\n\n첫 기록')
+  await expect(page.getByText('자동 저장 대기')).toBeVisible()
+  await expect(page.getByText('저장됨')).toBeVisible()
+
+  await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    const file = await documents.getFileHandle('작업 일지.md')
+    const writable = await file.createWritable()
+    await writable.write('# 외부 수정')
+    await writable.close()
+  })
+  await page
+    .getByRole('textbox', { name: 'Markdown 원문' })
+    .fill('# 내 두 번째 수정')
+  await expect(
+    page.getByRole('button', { name: '현재 편집본으로 덮어쓰기' }),
+  ).toBeVisible()
+
+  const conflictedDocumentContent = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    return (
+      await (await documents.getFileHandle('작업 일지.md')).getFile()
+    ).text()
+  })
+  expect(conflictedDocumentContent).toBe('# 외부 수정')
+
+  await page.getByRole('button', { name: '현재 편집본으로 덮어쓰기' }).click()
+  await expect(page.getByText('저장됨')).toBeVisible()
 
   const createdDocumentContent = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
@@ -90,7 +130,7 @@ test('opens and persists a real serializable directory handle', async ({
       await (await documents.getFileHandle('작업 일지.md')).getFile()
     ).text()
   })
-  expect(createdDocumentContent).toBe('')
+  expect(createdDocumentContent).toBe('# 내 두 번째 수정')
 
   await page.getByRole('button', { name: '작업 일지.md 작업' }).click()
   await page.getByRole('button', { name: '이름 변경', exact: true }).click()
@@ -146,7 +186,7 @@ test('opens and persists a real serializable directory handle', async ({
   })
 
   expect(trashedDocument.sourceExists).toBe(false)
-  expect(trashedDocument.payloadText).toBe('')
+  expect(trashedDocument.payloadText).toBe('# 내 두 번째 수정')
   expect(trashedDocument.metadata).toMatchObject({
     originalPath: 'Documents/업무 일지.md',
     kind: 'file',
@@ -182,7 +222,7 @@ test('opens and persists a real serializable directory handle', async ({
     return { content: await content.text(), trashEntries }
   })
 
-  expect(restoredDocument.content).toBe('')
+  expect(restoredDocument.content).toBe('# 내 두 번째 수정')
   expect(restoredDocument.trashEntries).toEqual([])
 
   await page
@@ -248,9 +288,7 @@ test('opens and persists a real serializable directory handle', async ({
   })
   await destinationDirectory.dispatchEvent('drop', { dataTransfer: dragData })
   await dragData.dispose()
-  await expect(
-    page.getByText(/Documents\/이동 테스트\.md 문서를 선택했습니다/),
-  ).toBeVisible()
+  await expect(page.getByText('Documents/이동 테스트.md')).toBeVisible()
 
   const draggedDocumentLocation = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
@@ -280,7 +318,7 @@ test('opens and persists a real serializable directory handle', async ({
     .selectOption('Documents/프로젝트')
   await page.getByRole('button', { name: '이동', exact: true }).click()
   await expect(
-    page.getByText(/Documents\/프로젝트\/이동 테스트\.md 문서를 선택했습니다/),
+    page.getByText('Documents/프로젝트/이동 테스트.md'),
   ).toBeVisible()
 
   const menuMovedDocumentLocation = await page.evaluate(async () => {
@@ -376,7 +414,8 @@ test('asks before initializing a folder with existing files', async ({
     page.getByRole('treeitem', { name: '기존문서.md' }),
   ).toBeVisible()
   await page.getByRole('treeitem', { name: '기존문서.md' }).click()
-  await expect(page.getByText(/기존문서\.md 문서를 선택했습니다/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: '기존문서.md' })).toBeVisible()
+  await expect(page.getByLabel('시각적 Markdown 편집기')).toBeVisible()
 
   const existingContent = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()

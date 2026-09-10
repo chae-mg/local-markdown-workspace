@@ -13,9 +13,11 @@ import {
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { DocumentEditor } from '@/components/editor/document-editor'
 import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
 import { Button } from '@/components/ui/button'
+import { useDocumentStore } from '@/stores/document.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 
 const navigationItems = [
@@ -96,6 +98,55 @@ function WelcomePage() {
             ? '다른 워크스페이스 열기'
             : '워크스페이스 열기'
 
+  const saveBeforeNavigation = async () => {
+    const documentState = useDocumentStore.getState()
+    if (
+      !documentState.document ||
+      documentState.draftSource === documentState.document.source
+    ) {
+      return true
+    }
+
+    if (documentState.preservationWarning) {
+      return false
+    }
+
+    return documentState.saveDocument()
+  }
+
+  const handleEntrySelect = async (path: string) => {
+    if (path === selectedPath || (await saveBeforeNavigation())) {
+      selectEntry(path)
+    }
+  }
+
+  const handleDirectorySelect = async (path: string) => {
+    if (await saveBeforeNavigation()) {
+      selectDirectory(path)
+    }
+  }
+
+  const handleCreateFolder = async (parentPath: string, name: string) =>
+    (await saveBeforeNavigation()) && createFolder(parentPath, name)
+
+  const handleCreateMarkdownFile = async (parentPath: string, name: string) =>
+    (await saveBeforeNavigation()) && createMarkdownFile(parentPath, name)
+
+  const handleMoveEntry = async (
+    path: string,
+    destinationDirectoryPath: string,
+  ) =>
+    (await saveBeforeNavigation()) && moveEntry(path, destinationDirectoryPath)
+
+  const handleMoveToTrash = async (path: string) =>
+    (await saveBeforeNavigation()) && moveEntryToTrash(path)
+
+  const handleRenameEntry = async (path: string, name: string) =>
+    (await saveBeforeNavigation()) && renameEntry(path, name)
+
+  const handleRestoreTrashEntry = async (id: string, name: string) =>
+    (await saveBeforeNavigation()) && restoreTrashEntry(id, name)
+
   return (
     <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[calc(100vh-2.5rem)]">
@@ -139,14 +190,14 @@ function WelcomePage() {
                 key={workspace.manifest?.id ?? workspace.name}
                 mutationErrorMessage={mutationErrorMessage}
                 onClearMutationError={clearMutationError}
-                onCreateFolder={createFolder}
-                onCreateMarkdownFile={createMarkdownFile}
-                onDirectorySelect={selectDirectory}
-                onMoveEntry={moveEntry}
-                onMoveToTrash={moveEntryToTrash}
+                onCreateFolder={handleCreateFolder}
+                onCreateMarkdownFile={handleCreateMarkdownFile}
+                onDirectorySelect={(path) => void handleDirectorySelect(path)}
+                onMoveEntry={handleMoveEntry}
+                onMoveToTrash={handleMoveToTrash}
                 onRefresh={() => void refreshWorkspace()}
-                onRenameEntry={renameEntry}
-                onSelect={selectEntry}
+                onRenameEntry={handleRenameEntry}
+                onSelect={(path) => void handleEntrySelect(path)}
                 selectedDirectoryPath={selectedDirectoryPath}
                 selectedPath={selectedPath}
                 workspaceName={workspace.name}
@@ -160,7 +211,7 @@ function WelcomePage() {
                 onClearMutationError={clearMutationError}
                 onEmpty={emptyTrash}
                 onRefresh={() => void refreshTrash()}
-                onRestore={restoreTrashEntry}
+                onRestore={handleRestoreTrashEntry}
               />
             </>
           ) : null}
@@ -207,162 +258,174 @@ function WelcomePage() {
                 : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 3 · File Tree
+              Phase 5 · Editor
             </span>
           </header>
 
-          <section className="grid flex-1 place-items-center px-5 py-12 sm:px-10">
-            <div className="w-full max-w-3xl">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600">
-                <span className="size-1.5 rounded-full bg-emerald-600" />
-                설치 없이 Chrome에서 시작
-              </div>
-              <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.02em] text-balance sm:text-6xl">
-                {needsInitialization ? (
-                  <>
-                    이 폴더를 Workspace로
-                    <br />
-                    준비할까요?
-                  </>
-                ) : isReady ? (
-                  <>
-                    {workspace?.name} Workspace가
-                    <br />
-                    준비되었습니다.
-                  </>
-                ) : (
-                  <>
-                    내 파일은 내 폴더에,
-                    <br />
-                    편집은 더 편안하게.
-                  </>
-                )}
-              </h1>
-              <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-                {needsInitialization
-                  ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
-                  : isReady
-                    ? selectedPath
-                      ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
-                      : '왼쪽 파일 트리에서 문서와 폴더를 만들고, 선택한 항목의 이름을 바꾸거나 휴지통으로 이동할 수 있습니다. 기존 항목은 덮어쓰지 않습니다.'
-                    : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
-              </p>
-
-              {isReady && workspace ? (
-                <div className="mt-8 md:hidden">
-                  <WorkspaceTree
-                    entries={entries}
-                    errorMessage={treeErrorMessage}
-                    isLoading={treeStatus === 'loading'}
-                    isMutating={mutationStatus !== 'idle'}
-                    key={`mobile-${workspace.manifest?.id ?? workspace.name}`}
-                    mutationErrorMessage={mutationErrorMessage}
-                    onClearMutationError={clearMutationError}
-                    onCreateFolder={createFolder}
-                    onCreateMarkdownFile={createMarkdownFile}
-                    onDirectorySelect={selectDirectory}
-                    onMoveEntry={moveEntry}
-                    onMoveToTrash={moveEntryToTrash}
-                    onRefresh={() => void refreshWorkspace()}
-                    onRenameEntry={renameEntry}
-                    onSelect={selectEntry}
-                    selectedDirectoryPath={selectedDirectoryPath}
-                    selectedPath={selectedPath}
-                    workspaceName={workspace.name}
-                  />
-                  <WorkspaceTrash
-                    entries={trashEntries}
-                    errorMessage={trashErrorMessage}
-                    isLoading={trashStatus === 'loading'}
-                    isMutating={mutationStatus !== 'idle'}
-                    mutationErrorMessage={mutationErrorMessage}
-                    onClearMutationError={clearMutationError}
-                    onEmpty={emptyTrash}
-                    onRefresh={() => void refreshTrash()}
-                    onRestore={restoreTrashEntry}
-                  />
+          {isReady && selectedPath ? (
+            <DocumentEditor
+              key={selectedPath}
+              onClose={() => void handleDirectorySelect(selectedDirectoryPath)}
+              path={selectedPath}
+            />
+          ) : (
+            <section className="grid flex-1 place-items-center px-5 py-12 sm:px-10">
+              <div className="w-full max-w-3xl">
+                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600">
+                  <span className="size-1.5 rounded-full bg-emerald-600" />
+                  설치 없이 Chrome에서 시작
                 </div>
-              ) : null}
-
-              <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={isOpening || isUnsupported}
-                    onClick={() => void handleWorkspaceAction()}
-                    size="lg"
-                  >
-                    {isOpening ? (
-                      <LoaderCircle
-                        aria-hidden="true"
-                        className="size-4 animate-spin"
-                      />
-                    ) : needsPermission ? (
-                      <RefreshCw aria-hidden="true" className="size-4" />
-                    ) : (
-                      <FolderOpen aria-hidden="true" className="size-4" />
-                    )}
-                    {buttonLabel}
-                  </Button>
-                  {needsPermission || needsInitialization ? (
-                    <Button
-                      onClick={() => void openWorkspace()}
-                      size="lg"
-                      variant="outline"
-                    >
-                      다른 폴더 선택
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="text-xs leading-5 text-stone-500">
-                  {isUnsupported
-                    ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
-                    : needsInitialization
-                      ? '초기화 전에는 기존 파일을 수정하거나 이동하지 않습니다.'
-                      : needsPermission
-                        ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
-                        : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
+                <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.02em] text-balance sm:text-6xl">
+                  {needsInitialization ? (
+                    <>
+                      이 폴더를 Workspace로
+                      <br />
+                      준비할까요?
+                    </>
+                  ) : isReady ? (
+                    <>
+                      {workspace?.name} Workspace가
+                      <br />
+                      준비되었습니다.
+                    </>
+                  ) : (
+                    <>
+                      내 파일은 내 폴더에,
+                      <br />
+                      편집은 더 편안하게.
+                    </>
+                  )}
+                </h1>
+                <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+                  {needsInitialization
+                    ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
+                    : isReady
+                      ? selectedPath
+                        ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
+                        : '왼쪽 파일 트리에서 문서와 폴더를 만들고, 선택한 항목의 이름을 바꾸거나 휴지통으로 이동할 수 있습니다. 기존 항목은 덮어쓰지 않습니다.'
+                      : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
                 </p>
+
+                {isReady && workspace ? (
+                  <div className="mt-8 md:hidden">
+                    <WorkspaceTree
+                      entries={entries}
+                      errorMessage={treeErrorMessage}
+                      isLoading={treeStatus === 'loading'}
+                      isMutating={mutationStatus !== 'idle'}
+                      key={`mobile-${workspace.manifest?.id ?? workspace.name}`}
+                      mutationErrorMessage={mutationErrorMessage}
+                      onClearMutationError={clearMutationError}
+                      onCreateFolder={handleCreateFolder}
+                      onCreateMarkdownFile={handleCreateMarkdownFile}
+                      onDirectorySelect={(path) =>
+                        void handleDirectorySelect(path)
+                      }
+                      onMoveEntry={handleMoveEntry}
+                      onMoveToTrash={handleMoveToTrash}
+                      onRefresh={() => void refreshWorkspace()}
+                      onRenameEntry={handleRenameEntry}
+                      onSelect={(path) => void handleEntrySelect(path)}
+                      selectedDirectoryPath={selectedDirectoryPath}
+                      selectedPath={selectedPath}
+                      workspaceName={workspace.name}
+                    />
+                    <WorkspaceTrash
+                      entries={trashEntries}
+                      errorMessage={trashErrorMessage}
+                      isLoading={trashStatus === 'loading'}
+                      isMutating={mutationStatus !== 'idle'}
+                      mutationErrorMessage={mutationErrorMessage}
+                      onClearMutationError={clearMutationError}
+                      onEmpty={emptyTrash}
+                      onRefresh={() => void refreshTrash()}
+                      onRestore={handleRestoreTrashEntry}
+                    />
+                  </div>
+                ) : null}
+
+                <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={isOpening || isUnsupported}
+                      onClick={() => void handleWorkspaceAction()}
+                      size="lg"
+                    >
+                      {isOpening ? (
+                        <LoaderCircle
+                          aria-hidden="true"
+                          className="size-4 animate-spin"
+                        />
+                      ) : needsPermission ? (
+                        <RefreshCw aria-hidden="true" className="size-4" />
+                      ) : (
+                        <FolderOpen aria-hidden="true" className="size-4" />
+                      )}
+                      {buttonLabel}
+                    </Button>
+                    {needsPermission || needsInitialization ? (
+                      <Button
+                        onClick={() => void openWorkspace()}
+                        size="lg"
+                        variant="outline"
+                      >
+                        다른 폴더 선택
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-xs leading-5 text-stone-500">
+                    {isUnsupported
+                      ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
+                      : needsInitialization
+                        ? '초기화 전에는 기존 파일을 수정하거나 이동하지 않습니다.'
+                        : needsPermission
+                          ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
+                          : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
+                  </p>
+                </div>
+
+                {errorMessage ? (
+                  <div
+                    className="mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                    role="alert"
+                  >
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0"
+                    />
+                    <span>{errorMessage}</span>
+                  </div>
+                ) : null}
+
+                <dl className="mt-14 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
+                  <div>
+                    <dt className="text-xs font-medium text-stone-500">
+                      저장 위치
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold">
+                      Local File System
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-stone-500">
+                      원본 형식
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold">
+                      표준 Markdown
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-stone-500">
+                      지원 환경
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold">
+                      Chrome · Windows · macOS
+                    </dd>
+                  </div>
+                </dl>
               </div>
-
-              {errorMessage ? (
-                <div
-                  className="mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-                  role="alert"
-                >
-                  <TriangleAlert
-                    aria-hidden="true"
-                    className="mt-0.5 size-4 shrink-0"
-                  />
-                  <span>{errorMessage}</span>
-                </div>
-              ) : null}
-
-              <dl className="mt-14 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
-                <div>
-                  <dt className="text-xs font-medium text-stone-500">
-                    저장 위치
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold">
-                    Local File System
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-stone-500">
-                    원본 형식
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold">표준 Markdown</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-stone-500">
-                    지원 환경
-                  </dt>
-                  <dd className="mt-1 text-sm font-semibold">
-                    Chrome · Windows · macOS
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </section>
+            </section>
+          )}
         </main>
       </div>
     </div>

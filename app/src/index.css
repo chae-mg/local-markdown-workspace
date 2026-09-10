@@ -33,3 +33,30 @@ textarea,
 select {
   font: inherit;
 }
+
+.milkdown-shell .milkdown {
+  min-height: 34rem;
+  background: transparent;
+}
+
+.milkdown-shell .milkdown .ProseMirror {
+  min-height: 34rem;
+  padding: 3rem clamp(1.5rem, 6vw, 5rem);
+  font-family: var(--font-sans);
+  color: #292524;
+}
+
+.milkdown-shell .milkdown .ProseMirror:focus {
+  outline: none;
+}
+
+.milkdown-shell {
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-title: var(--font-sans);
+}
+
+.milkdown-shell .milkdown .ProseMirror h1,
+.milkdown-shell .milkdown .ProseMirror h2,
+.milkdown-shell .milkdown .ProseMirror h3 {
+  letter-spacing: -0.025em;
+}
