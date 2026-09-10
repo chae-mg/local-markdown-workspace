@@ -14,6 +14,9 @@ describe('App', () => {
     useWorkspaceStore.setState({
       entries: [],
       errorMessage: null,
+      mutationErrorMessage: null,
+      mutationStatus: 'idle',
+      selectedDirectoryPath: 'Documents',
       selectedPath: null,
       status: 'checking',
       treeErrorMessage: null,

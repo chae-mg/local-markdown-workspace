@@ -20,16 +20,23 @@ export type WorkspaceStatus =
 export interface WorkspaceStore {
   entries: WorkspaceEntry[]
   errorMessage: string | null
+  mutationErrorMessage: string | null
+  mutationStatus: 'idle' | 'creating'
+  selectedDirectoryPath: string
   selectedPath: string | null
   status: WorkspaceStatus
   treeErrorMessage: string | null
   treeStatus: 'idle' | 'loading' | 'ready' | 'error'
   workspace: WorkspaceSummary | null
+  clearMutationError(): void
+  createFolder(parentPath: string, name: string): Promise<boolean>
+  createMarkdownFile(parentPath: string, name: string): Promise<boolean>
   initialize(): Promise<void>
   initializeWorkspace(): Promise<void>
   openWorkspace(): Promise<void>
   refreshWorkspace(): Promise<void>
   reconnectWorkspace(): Promise<void>
+  selectDirectory(path: string): void
   selectEntry(path: string): void
 }
 
@@ -47,11 +54,18 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
   return create<WorkspaceStore>((set, get) => ({
     entries: [],
     errorMessage: null,
+    mutationErrorMessage: null,
+    mutationStatus: 'idle',
+    selectedDirectoryPath: 'Documents',
     selectedPath: null,
     status: 'checking',
     treeErrorMessage: null,
     treeStatus: 'idle',
     workspace: null,
+
+    clearMutationError() {
+      set({ mutationErrorMessage: null })
+    },
 
     async initialize() {
       if (get().status !== 'checking') {
@@ -75,6 +89,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
         set({
           entries: [],
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: 'Documents',
           selectedPath: null,
           status:
             workspace.permission === 'granted'
@@ -101,6 +118,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         const workspace = await service.selectWorkspace()
         set({
           entries: [],
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: 'Documents',
           selectedPath: null,
           status: statusForWorkspace(workspace),
           treeErrorMessage: null,
@@ -135,6 +155,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         const workspace = await service.initializeWorkspace()
         set({
           entries: [],
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: 'Documents',
           selectedPath: null,
           status: 'ready',
           treeErrorMessage: null,
@@ -160,6 +183,9 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
         const workspace = await service.requestRecentWorkspacePermission()
         set({
           entries: [],
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: 'Documents',
           selectedPath: null,
           status: statusForWorkspace(workspace),
           treeErrorMessage: null,
@@ -194,6 +220,20 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
 
         set((state) => ({
           entries,
+          selectedDirectoryPath:
+            state.selectedDirectoryPath === '' ||
+            entries.some(
+              (entry) =>
+                entry.kind === 'directory' &&
+                entry.path === state.selectedDirectoryPath,
+            )
+              ? state.selectedDirectoryPath
+              : entries.some(
+                    (entry) =>
+                      entry.kind === 'directory' && entry.path === 'Documents',
+                  )
+                ? 'Documents'
+                : '',
           selectedPath:
             state.selectedPath &&
             entries.some(
@@ -217,6 +257,74 @@ export function createWorkspaceStore(service: WorkspaceApplicationService) {
           treeErrorMessage: messageFromError(error),
           treeStatus: 'error',
         })
+      }
+    },
+
+    async createMarkdownFile(parentPath, name) {
+      if (get().status !== 'ready' || get().mutationStatus === 'creating') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'creating' })
+
+      try {
+        const path = await service.createMarkdownFile(parentPath, name)
+        const entries = await service.scanWorkspace()
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: parentPath,
+          selectedPath: path,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    async createFolder(parentPath, name) {
+      if (get().status !== 'ready' || get().mutationStatus === 'creating') {
+        return false
+      }
+
+      set({ mutationErrorMessage: null, mutationStatus: 'creating' })
+
+      try {
+        const path = await service.createFolder(parentPath, name)
+        const entries = await service.scanWorkspace()
+        set({
+          entries,
+          mutationErrorMessage: null,
+          mutationStatus: 'idle',
+          selectedDirectoryPath: path,
+          selectedPath: null,
+          treeErrorMessage: null,
+          treeStatus: 'ready',
+        })
+        return true
+      } catch (error) {
+        set({
+          mutationErrorMessage: messageFromError(error),
+          mutationStatus: 'idle',
+        })
+        return false
+      }
+    },
+
+    selectDirectory(path) {
+      const isDirectory = get().entries.some(
+        (entry) => entry.kind === 'directory' && entry.path === path,
+      )
+
+      if (isDirectory) {
+        set({ selectedDirectoryPath: path })
       }
     },
 

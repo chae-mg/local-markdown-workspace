@@ -27,8 +27,15 @@ function renderTree(
     entries,
     errorMessage: null,
     isLoading: false,
+    isMutating: false,
+    mutationErrorMessage: null,
+    onClearMutationError: vi.fn(),
+    onCreateFolder: vi.fn(async () => true),
+    onCreateMarkdownFile: vi.fn(async () => true),
+    onDirectorySelect: vi.fn(),
     onRefresh: vi.fn(),
     onSelect: vi.fn(),
+    selectedDirectoryPath: 'Documents',
     selectedPath: null,
     workspaceName: '업무 문서',
     ...overrides,
@@ -86,5 +93,37 @@ describe('WorkspaceTree', () => {
 
     expect(screen.getByText('폴더를 읽을 수 없습니다.')).toBeInTheDocument()
     expect(screen.getByRole('treeitem', { name: 'Documents' })).toBeVisible()
+  })
+
+  it('creates a Markdown document in the selected folder', async () => {
+    const user = userEvent.setup()
+    const onCreateMarkdownFile = vi.fn(async () => true)
+    renderTree({ onCreateMarkdownFile })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Documents에 새 Markdown 문서',
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: '새 문서 이름' }),
+      '일지',
+    )
+    await user.click(screen.getByRole('button', { name: '생성' }))
+
+    expect(onCreateMarkdownFile).toHaveBeenCalledWith('Documents', '일지')
+    expect(
+      screen.queryByRole('textbox', { name: '새 문서 이름' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('selects a folder as the next creation target', async () => {
+    const user = userEvent.setup()
+    const onDirectorySelect = vi.fn()
+    renderTree({ onDirectorySelect })
+
+    await user.click(screen.getByRole('treeitem', { name: 'Projects' }))
+
+    expect(onDirectorySelect).toHaveBeenCalledWith('Projects')
   })
 })

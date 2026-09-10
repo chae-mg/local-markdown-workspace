@@ -11,17 +11,46 @@ import {
 } from '@/domain/workspace'
 import type { FileSystemService } from '@/services/file-system.service'
 import type { RecentWorkspaceStore } from '@/services/recent-workspace.store'
+import { joinWorkspacePath, normalizeWorkspacePath } from '@/utils/path'
 
 const workspaceManifestPath = '.workspace/workspace.json'
 const workspaceDirectories = ['Documents', 'Databases', 'Attachments'] as const
 
 export interface WorkspaceApplicationService {
+  createFolder(parentPath: string, name: string): Promise<string>
+  createMarkdownFile(parentPath: string, name: string): Promise<string>
   isSupported(): boolean
   restoreRecentWorkspace(): Promise<WorkspaceSummary | null>
   selectWorkspace(): Promise<WorkspaceSummary>
   initializeWorkspace(): Promise<WorkspaceSummary>
   requestRecentWorkspacePermission(): Promise<WorkspaceSummary>
   scanWorkspace(): Promise<WorkspaceEntry[]>
+}
+
+function normalizeEntryName(name: string) {
+  const normalizedName = name.trim().normalize('NFC')
+  const windowsDeviceName = normalizedName.split('.')[0]?.toUpperCase()
+  const hasControlCharacter = [...normalizedName].some(
+    (character) => (character.codePointAt(0) ?? 0) <= 31,
+  )
+
+  if (
+    !normalizedName ||
+    normalizedName === '.' ||
+    normalizedName === '..' ||
+    normalizedName === '.workspace' ||
+    hasControlCharacter ||
+    /[<>:"/\\|?*]/.test(normalizedName) ||
+    /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(windowsDeviceName ?? '') ||
+    /[. ]$/.test(normalizedName)
+  ) {
+    throw new WorkspaceError(
+      'invalid-path',
+      '운영체제에서 사용할 수 없는 이름입니다. 특수문자와 예약된 장치 이름을 제외해주세요.',
+    )
+  }
+
+  return normalizedName
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -209,6 +238,35 @@ export class WorkspaceService<
     return this.scanDirectory(root)
   }
 
+  async createMarkdownFile(parentPath: string, name: string) {
+    const root = this.getCurrentHandle()
+    const normalizedParentPath = normalizeWorkspacePath(parentPath)
+    const normalizedName = normalizeEntryName(name)
+    const fileName = normalizedName.toLowerCase().endsWith('.md')
+      ? normalizedName
+      : `${normalizedName}.md`
+
+    if (fileName.toLowerCase() === '.md') {
+      throw new WorkspaceError('invalid-path', '문서 이름을 입력해주세요.')
+    }
+
+    await this.assertEntryAvailable(root, normalizedParentPath, fileName)
+    const path = joinWorkspacePath(normalizedParentPath, fileName)
+    await this.fileSystem.writeTextFile(root, path, '')
+    return path
+  }
+
+  async createFolder(parentPath: string, name: string) {
+    const root = this.getCurrentHandle()
+    const normalizedParentPath = normalizeWorkspacePath(parentPath)
+    const folderName = normalizeEntryName(name)
+
+    await this.assertEntryAvailable(root, normalizedParentPath, folderName)
+    const path = joinWorkspacePath(normalizedParentPath, folderName)
+    await this.fileSystem.createDirectory(root, path)
+    return path
+  }
+
   getCurrentHandle() {
     if (!this.currentHandle) {
       throw new WorkspaceError(
@@ -312,6 +370,27 @@ export class WorkspaceService<
     }
 
     return scannedEntries
+  }
+
+  private async assertEntryAvailable(
+    root: DirectoryHandle,
+    parentPath: string,
+    name: string,
+  ) {
+    const entries = await this.fileSystem.listDirectory(root, parentPath)
+    const comparableName = name.normalize('NFC').toLocaleLowerCase()
+
+    if (
+      entries.some(
+        (entry) =>
+          entry.name.normalize('NFC').toLocaleLowerCase() === comparableName,
+      )
+    ) {
+      throw new WorkspaceError(
+        'entry-already-exists',
+        '같은 위치에 동일한 이름의 파일 또는 폴더가 있습니다.',
+      )
+    }
   }
 
   private async ensurePermission(

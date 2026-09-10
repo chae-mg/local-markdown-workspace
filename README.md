@@ -119,6 +119,8 @@ Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initial
 - `.workspace/`를 제외한 Markdown Workspace Scan
 - File Tree 펼치기·접기·선택·새로고침
 - File Tree 로딩·오류·빈 상태와 선택 유효성 검사
+- 선택한 폴더에 새 Markdown 문서와 하위 폴더 생성
+- 기존 항목 덮어쓰기 방지와 파일명 안전성 검사
 
 ## 로컬 실행
 

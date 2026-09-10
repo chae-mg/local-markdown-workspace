@@ -124,6 +124,57 @@ describe('WorkspaceService', () => {
     expect(fileSystem.writeTextFile).toHaveBeenCalledTimes(1)
   })
 
+  it('creates new Markdown files and folders without overwriting entries', async () => {
+    const { fileSystem, handle, service } = createDependencies({
+      entriesByPath: {
+        '': [],
+        Documents: [
+          {
+            kind: 'file',
+            name: '기존 문서.md',
+            path: 'Documents/기존 문서.md',
+          },
+        ],
+      },
+    })
+    await service.selectWorkspace()
+
+    await expect(
+      service.createMarkdownFile('Documents', '새 문서'),
+    ).resolves.toBe('Documents/새 문서.md')
+    expect(fileSystem.writeTextFile).toHaveBeenCalledWith(
+      handle,
+      'Documents/새 문서.md',
+      '',
+    )
+
+    await expect(service.createFolder('Documents', '프로젝트')).resolves.toBe(
+      'Documents/프로젝트',
+    )
+    expect(fileSystem.createDirectory).toHaveBeenCalledWith(
+      handle,
+      'Documents/프로젝트',
+    )
+
+    await expect(
+      service.createMarkdownFile('Documents', '기존 문서'),
+    ).rejects.toMatchObject({ code: 'entry-already-exists' })
+  })
+
+  it('rejects unsafe entry names before touching the file system', async () => {
+    const { fileSystem, service } = createDependencies()
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.writeTextFile).mockClear()
+
+    await expect(
+      service.createMarkdownFile('Documents', '../비밀'),
+    ).rejects.toMatchObject({ code: 'invalid-path' })
+    await expect(
+      service.createFolder('Documents', '잘못된?폴더'),
+    ).rejects.toMatchObject({ code: 'invalid-path' })
+    expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
+  })
+
   it('restores an existing manifest without changing its immutable ID', async () => {
     const recentWorkspace = {
       handle: { name: '업무 문서' },

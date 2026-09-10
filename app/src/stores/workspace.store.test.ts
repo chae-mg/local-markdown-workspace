@@ -6,6 +6,10 @@ import { createWorkspaceStore } from '@/stores/workspace.store'
 
 function createService() {
   return {
+    createFolder: vi.fn(async (_parentPath: string, name: string) => name),
+    createMarkdownFile: vi.fn(
+      async (_parentPath: string, name: string) => `${name}.md`,
+    ),
     initializeWorkspace: vi.fn(),
     isSupported: vi.fn(() => true),
     requestRecentWorkspacePermission: vi.fn(),
@@ -68,6 +72,35 @@ describe('workspace store file tree', () => {
     })
   })
 
+  it('creates a Markdown file and selects the new path', async () => {
+    const service = createService()
+    service.createMarkdownFile.mockResolvedValueOnce('Documents/새 문서.md')
+    service.scanWorkspace.mockResolvedValueOnce([
+      { kind: 'directory', name: 'Documents', path: 'Documents' },
+      {
+        kind: 'file',
+        name: '새 문서.md',
+        path: 'Documents/새 문서.md',
+      },
+    ])
+    const store = createWorkspaceStore(service)
+    store.setState({ status: 'ready' })
+
+    await expect(
+      store.getState().createMarkdownFile('Documents', '새 문서'),
+    ).resolves.toBe(true)
+
+    expect(service.createMarkdownFile).toHaveBeenCalledWith(
+      'Documents',
+      '새 문서',
+    )
+    expect(store.getState()).toMatchObject({
+      mutationErrorMessage: null,
+      mutationStatus: 'idle',
+      selectedPath: 'Documents/새 문서.md',
+    })
+  })
+
   it('keeps the current workspace when choosing another folder is cancelled', async () => {
     const service = createService()
     service.selectWorkspace.mockRejectedValueOnce(
@@ -97,6 +130,35 @@ describe('workspace store file tree', () => {
       entries: [{ kind: 'file', name: '기존.md', path: '기존.md' }],
       status: 'ready',
       workspace: { name: '기존 Workspace' },
+    })
+  })
+
+  it('creates a Markdown file and refreshes the selected entry', async () => {
+    const service = createService()
+    service.createMarkdownFile.mockResolvedValueOnce('Documents/새 문서.md')
+    service.scanWorkspace.mockResolvedValueOnce([
+      { kind: 'directory', name: 'Documents', path: 'Documents' },
+      {
+        kind: 'file',
+        name: '새 문서.md',
+        path: 'Documents/새 문서.md',
+      },
+    ])
+    const store = createWorkspaceStore(service)
+    store.setState({ status: 'ready' })
+
+    await expect(
+      store.getState().createMarkdownFile('Documents', '새 문서'),
+    ).resolves.toBe(true)
+    expect(service.createMarkdownFile).toHaveBeenCalledWith(
+      'Documents',
+      '새 문서',
+    )
+    expect(store.getState()).toMatchObject({
+      mutationErrorMessage: null,
+      mutationStatus: 'idle',
+      selectedDirectoryPath: 'Documents',
+      selectedPath: 'Documents/새 문서.md',
     })
   })
 })

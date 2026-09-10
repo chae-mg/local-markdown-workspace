@@ -72,6 +72,40 @@ test('opens and persists a real serializable directory handle', async ({
     page.getByRole('treeitem', { name: 'Attachments' }),
   ).toBeVisible()
 
+  await page
+    .getByRole('button', { name: 'Documents에 새 Markdown 문서' })
+    .click()
+  await page.getByRole('textbox', { name: '새 문서 이름' }).fill('작업 일지')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await expect(
+    page.getByRole('treeitem', { name: '작업 일지.md' }),
+  ).toBeVisible()
+
+  const createdDocumentContent = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    return (
+      await (await documents.getFileHandle('작업 일지.md')).getFile()
+    ).text()
+  })
+  expect(createdDocumentContent).toBe('')
+
+  await page.getByRole('button', { name: 'Documents에 새 폴더' }).click()
+  await page.getByRole('textbox', { name: '새 폴더 이름' }).fill('프로젝트')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await expect(page.getByRole('treeitem', { name: '프로젝트' })).toBeVisible()
+
+  const createdDirectoryName = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const documents = await workspace.getDirectoryHandle('Documents')
+    return (await documents.getDirectoryHandle('프로젝트')).name
+  })
+  expect(createdDirectoryName).toBe('프로젝트')
+
   const persistedHandleName = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('local-markdown-workspace', 1)
