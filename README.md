@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 5 Markdown Editor까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 6 Attachment까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -130,6 +130,10 @@ Phase 0 개발 환경부터 Phase 5 Markdown Editor까지 구현했습니다.
 - 저장 직전 수정 시각·원문 비교를 통한 외부 변경 충돌 방지
 - 충돌 시 디스크 버전 다시 불러오기 또는 명시적 덮어쓰기
 - 시각 편집기의 Markdown 정규화 가능성 감지와 자동 저장 중단
+- Attachment 바이너리 파일 읽기·쓰기와 고유 파일명 생성
+- 파일 선택, Drag & Drop, 클립보드 이미지 붙여넣기
+- 문서 위치 기준의 이동 가능한 상대경로 Markdown 삽입
+- 로컬 Attachment 이미지를 Blob URL로 변환한 시각 편집기 미리보기
 - 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원
 - 되돌릴 수 없음을 확인한 뒤에만 실행되는 명시적 휴지통 비우기
 - 파일·폴더 Drag & Drop 이동과 모바일·키보드용 목적지 선택 이동

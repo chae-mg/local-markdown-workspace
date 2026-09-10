@@ -258,7 +258,7 @@ function WelcomePage() {
                 : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 5 · Editor
+              Phase 6 · Attachment
             </span>
           </header>
 

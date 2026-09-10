@@ -19,7 +19,14 @@ export interface FileSystemService<DirectoryHandle> {
     mode?: FileSystemAccessMode,
   ): Promise<PermissionState>
   listDirectory(root: DirectoryHandle, path?: string): Promise<WorkspaceEntry[]>
+  readFile(root: DirectoryHandle, path: string): Promise<File>
   readTextFile(root: DirectoryHandle, path: string): Promise<string>
+  writeFile(
+    root: DirectoryHandle,
+    path: string,
+    content: Blob,
+    options?: FileMutationOptions,
+  ): Promise<void>
   writeTextFile(
     root: DirectoryHandle,
     path: string,

@@ -139,32 +139,31 @@ export class BrowserFileSystemService implements FileSystemService<FileSystemDir
     }
   }
 
+  async readFile(root: FileSystemDirectoryHandle, path: string) {
+    try {
+      const fileHandle = await this.resolveFile(root, path)
+      return await fileHandle.getFile()
+    } catch (error) {
+      throw toWorkspaceError(error, '파일을 읽지 못했습니다.')
+    }
+  }
+
+  async writeFile(
+    root: FileSystemDirectoryHandle,
+    path: string,
+    content: Blob,
+    options: FileMutationOptions = {},
+  ) {
+    await this.writeContent(root, path, content, options)
+  }
+
   async writeTextFile(
     root: FileSystemDirectoryHandle,
     path: string,
     content: string,
     options: FileMutationOptions = {},
   ) {
-    const normalizedPath = assertMutableWorkspacePath(
-      path,
-      options.allowProtected,
-    )
-
-    try {
-      const { name, parent } = await this.resolveParent(root, normalizedPath)
-      const fileHandle = await parent.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-
-      try {
-        await writable.write(content)
-        await writable.close()
-      } catch (error) {
-        await writable.abort(error).catch(() => undefined)
-        throw error
-      }
-    } catch (error) {
-      throw toWorkspaceError(error, '파일을 저장하지 못했습니다.')
-    }
+    await this.writeContent(root, path, content, options)
   }
 
   async createDirectory(
@@ -293,6 +292,34 @@ export class BrowserFileSystemService implements FileSystemService<FileSystemDir
     }
 
     return directory
+  }
+
+  private async writeContent(
+    root: FileSystemDirectoryHandle,
+    path: string,
+    content: FileSystemWriteChunkType,
+    options: FileMutationOptions,
+  ) {
+    const normalizedPath = assertMutableWorkspacePath(
+      path,
+      options.allowProtected,
+    )
+
+    try {
+      const { name, parent } = await this.resolveParent(root, normalizedPath)
+      const fileHandle = await parent.getFileHandle(name, { create: true })
+      const writable = await fileHandle.createWritable()
+
+      try {
+        await writable.write(content)
+        await writable.close()
+      } catch (error) {
+        await writable.abort(error).catch(() => undefined)
+        throw error
+      }
+    } catch (error) {
+      throw toWorkspaceError(error, '파일을 저장하지 못했습니다.')
+    }
   }
 
   private async resolveParent(root: FileSystemDirectoryHandle, path: string) {

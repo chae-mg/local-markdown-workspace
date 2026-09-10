@@ -9,7 +9,7 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 5 · Editor')).toBeVisible()
+  await expect(page.getByText('Phase 6 · Attachment')).toBeVisible()
 })
 
 test('opens and persists a real serializable directory handle', async ({
@@ -121,6 +121,56 @@ test('opens and persists a real serializable directory handle', async ({
   await page.getByRole('button', { name: '현재 편집본으로 덮어쓰기' }).click()
   await expect(page.getByText('저장됨')).toBeVisible()
 
+  const fileChooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: '첨부', exact: true }).click()
+  const fileChooser = await fileChooserPromise
+  const pixelPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  )
+  await fileChooser.setFiles({
+    buffer: pixelPng,
+    mimeType: 'image/png',
+    name: 'pixel.png',
+  })
+  await expect(
+    page.getByRole('textbox', { name: 'Markdown 원문' }),
+  ).toHaveValue(/!\[pixel\]\(\.\.\/Attachments\/img_[a-f\d]+\.png\)/)
+
+  const sourceEditor = page.getByRole('textbox', { name: 'Markdown 원문' })
+  await sourceEditor.evaluate((element) => {
+    const transfer = new DataTransfer()
+    transfer.items.add(
+      new File([new Uint8Array([137, 80, 78, 71])], 'pasted.png', {
+        type: 'image/png',
+      }),
+    )
+    element.dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: transfer,
+      }),
+    )
+  })
+  await expect(sourceEditor).toHaveValue(
+    /!\[pasted\]\(\.\.\/Attachments\/img_[a-f\d]+\.png\)/,
+  )
+
+  const droppedFiles = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer()
+    transfer.items.add(
+      new File(['attachment note'], 'notes.txt', { type: 'text/plain' }),
+    )
+    return transfer
+  })
+  await sourceEditor.dispatchEvent('drop', { dataTransfer: droppedFiles })
+  await droppedFiles.dispose()
+  await expect(sourceEditor).toHaveValue(
+    /\[notes\.txt\]\(\.\.\/Attachments\/file_[a-f\d]+\.txt\)/,
+  )
+  await expect(page.getByText('저장됨')).toBeVisible()
+
   const createdDocumentContent = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
     const workspace =
@@ -130,7 +180,56 @@ test('opens and persists a real serializable directory handle', async ({
       await (await documents.getFileHandle('작업 일지.md')).getFile()
     ).text()
   })
-  expect(createdDocumentContent).toBe('# 내 두 번째 수정')
+  expect(createdDocumentContent).toMatch(
+    /^# 내 두 번째 수정\n\n!\[pixel\]\(\.\.\/Attachments\/img_[a-f\d]+\.png\)\n\n!\[pasted\]\(\.\.\/Attachments\/img_[a-f\d]+\.png\)\n\n\[notes\.txt\]\(\.\.\/Attachments\/file_[a-f\d]+\.txt\)$/,
+  )
+
+  const storedAttachments = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const attachments = await workspace.getDirectoryHandle('Attachments')
+    const names: string[] = []
+    for await (const entry of attachments.values()) {
+      names.push(entry.name)
+    }
+    const metadata = []
+    for (const name of names) {
+      const file = await (await attachments.getFileHandle(name)).getFile()
+      metadata.push({ name, size: file.size, type: file.type })
+    }
+    return metadata.sort((left, right) => left.name.localeCompare(right.name))
+  })
+  expect(storedAttachments).toHaveLength(3)
+  expect(storedAttachments).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ size: pixelPng.byteLength, type: 'image/png' }),
+      expect.objectContaining({
+        name: expect.stringMatching(/^file_.*\.txt$/),
+      }),
+    ]),
+  )
+
+  await page.getByRole('button', { name: '에디터', exact: true }).click()
+  const localImage = page.locator('.ProseMirror img').first()
+  await expect(localImage).toBeVisible()
+  await expect(localImage).toHaveAttribute('src', /^blob:/)
+  const attachmentDownloadPromise = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'notes.txt' }).click()
+  const attachmentDownload = await attachmentDownloadPromise
+  expect(attachmentDownload.suggestedFilename()).toBe('notes.txt')
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  const saveAfterVisualRoundTrip = page.getByRole('button', {
+    name: '저장',
+    exact: true,
+  })
+  if (await saveAfterVisualRoundTrip.isEnabled()) {
+    await saveAfterVisualRoundTrip.click()
+    await expect(page.getByText('저장됨')).toBeVisible()
+  }
+  const finalDocumentContent = await page
+    .getByRole('textbox', { name: 'Markdown 원문' })
+    .inputValue()
 
   await page.getByRole('button', { name: '작업 일지.md 작업' }).click()
   await page.getByRole('button', { name: '이름 변경', exact: true }).click()
@@ -186,7 +285,7 @@ test('opens and persists a real serializable directory handle', async ({
   })
 
   expect(trashedDocument.sourceExists).toBe(false)
-  expect(trashedDocument.payloadText).toBe('# 내 두 번째 수정')
+  expect(trashedDocument.payloadText).toBe(finalDocumentContent)
   expect(trashedDocument.metadata).toMatchObject({
     originalPath: 'Documents/업무 일지.md',
     kind: 'file',
@@ -222,7 +321,7 @@ test('opens and persists a real serializable directory handle', async ({
     return { content: await content.text(), trashEntries }
   })
 
-  expect(restoredDocument.content).toBe('# 내 두 번째 수정')
+  expect(restoredDocument.content).toBe(finalDocumentContent)
   expect(restoredDocument.trashEntries).toEqual([])
 
   await page

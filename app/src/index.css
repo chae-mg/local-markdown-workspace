@@ -58,5 +58,6 @@ select {
 .milkdown-shell .milkdown .ProseMirror h1,
 .milkdown-shell .milkdown .ProseMirror h2,
 .milkdown-shell .milkdown .ProseMirror h3 {
+  font-family: var(--font-sans) !important;
   letter-spacing: -0.025em;
 }

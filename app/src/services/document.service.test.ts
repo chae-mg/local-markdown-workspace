@@ -25,9 +25,11 @@ function createFileSystem(source = '# 처음\n', lastModified = 100) {
     listDirectory: vi.fn(async () => []),
     moveEntry: vi.fn(),
     queryPermission: vi.fn(async () => 'granted' as PermissionState),
+    readFile: vi.fn(),
     readTextFile: vi.fn(async () => currentSource),
     requestPermission: vi.fn(async () => 'granted' as PermissionState),
     selectDirectory: vi.fn(),
+    writeFile: vi.fn(),
     writeTextFile: vi.fn(async (_root, _path, content: string) => {
       currentSource = content
       currentLastModified += 1

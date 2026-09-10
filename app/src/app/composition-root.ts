@@ -1,3 +1,4 @@
+import { AttachmentService } from '@/services/attachment.service'
 import { BrowserFileSystemService } from '@/services/browser-file-system.service'
 import { DocumentService } from '@/services/document.service'
 import { IndexedDbRecentWorkspaceStore } from '@/services/indexed-db-recent-workspace.store'
@@ -13,6 +14,11 @@ export const workspaceService = new WorkspaceService(
 )
 
 export const documentService = new DocumentService(
+  browserFileSystemService,
+  () => workspaceService.getCurrentHandle(),
+)
+
+export const attachmentService = new AttachmentService(
   browserFileSystemService,
   () => workspaceService.getCurrentHandle(),
 )

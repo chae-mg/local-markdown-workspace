@@ -5,6 +5,7 @@ import {
   Code2,
   FileText,
   LoaderCircle,
+  Paperclip,
   RefreshCw,
   RotateCcw,
   Save,
@@ -12,14 +13,18 @@ import {
 import {
   lazy,
   Suspense,
+  type ClipboardEvent,
+  type DragEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { MarkdownError } from '@/domain/markdown'
+import { attachmentService } from '@/app/composition-root'
 import { markdownService } from '@/services/markdown.service'
 import { useDocumentStore } from '@/stores/document.store'
 
@@ -60,6 +65,12 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
   } = useDocumentStore()
   const [showNormalizationConfirmation, setShowNormalizationConfirmation] =
     useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [isSavingAttachment, setIsSavingAttachment] = useState(false)
+  const [visualEditorRevision, setVisualEditorRevision] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const documentPath = document?.path ?? path
 
   useEffect(() => {
     void openDocument(path)
@@ -130,6 +141,158 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
     },
     [parsedDocument.value, setPreservationWarning],
   )
+
+  const uploadImage = useCallback(
+    async (file: File) => {
+      setAttachmentError(null)
+      setIsSavingAttachment(true)
+      try {
+        const attachment = await attachmentService.saveAttachment(
+          documentPath,
+          file,
+        )
+        return attachment.relativePath
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : '이미지를 저장하지 못했습니다.'
+        setAttachmentError(message)
+        throw error
+      } finally {
+        setIsSavingAttachment(false)
+      }
+    },
+    [documentPath],
+  )
+
+  const resolveAttachmentFile = useCallback(
+    (url: string) => attachmentService.readAttachment(documentPath, url),
+    [documentPath],
+  )
+
+  const insertAttachmentMarkdown = useCallback(
+    (markdownBlocks: string[]) => {
+      if (markdownBlocks.length === 0) {
+        return
+      }
+
+      const currentSource = useDocumentStore.getState().draftSource
+      const insertion = markdownBlocks.join('\n\n')
+
+      if (editorMode === 'source') {
+        const textarea = sourceTextareaRef.current
+        const start = textarea?.selectionStart ?? currentSource.length
+        const end = textarea?.selectionEnd ?? start
+        const before = currentSource.slice(0, start)
+        const after = currentSource.slice(end)
+        const prefix = before
+          ? before.endsWith('\n\n')
+            ? ''
+            : before.endsWith('\n')
+              ? '\n'
+              : '\n\n'
+          : ''
+        const suffix = after
+          ? after.startsWith('\n\n')
+            ? ''
+            : after.startsWith('\n')
+              ? '\n'
+              : '\n\n'
+          : ''
+        const nextSource = `${before}${prefix}${insertion}${suffix}${after}`
+        updateDraft(nextSource)
+
+        window.requestAnimationFrame(() => {
+          const cursor = start + prefix.length + insertion.length
+          sourceTextareaRef.current?.focus()
+          sourceTextareaRef.current?.setSelectionRange(cursor, cursor)
+        })
+        return
+      }
+
+      try {
+        const currentDocument = markdownService.parseDocument(currentSource)
+        const separator = currentDocument.body
+          ? currentDocument.body.endsWith('\n\n')
+            ? ''
+            : currentDocument.body.endsWith('\n')
+              ? '\n'
+              : '\n\n'
+          : ''
+        updateDraft(
+          markdownService.serializeDocument({
+            ...currentDocument,
+            body: `${currentDocument.body}${separator}${insertion}`,
+          }),
+        )
+        setVisualEditorRevision((revision) => revision + 1)
+      } catch (error) {
+        setAttachmentError(
+          error instanceof Error
+            ? error.message
+            : '첨부 파일 링크를 문서에 넣지 못했습니다.',
+        )
+      }
+    },
+    [editorMode, updateDraft],
+  )
+
+  const saveAttachments = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0 || status !== 'ready') {
+        return
+      }
+
+      setAttachmentError(null)
+      setIsSavingAttachment(true)
+      const markdownBlocks: string[] = []
+      try {
+        for (const file of files) {
+          const attachment = await attachmentService.saveAttachment(
+            documentPath,
+            file,
+          )
+          markdownBlocks.push(attachment.markdown)
+        }
+      } catch (error) {
+        setAttachmentError(
+          error instanceof Error
+            ? error.message
+            : '첨부 파일을 저장하지 못했습니다.',
+        )
+      } finally {
+        insertAttachmentMarkdown(markdownBlocks)
+        setIsSavingAttachment(false)
+      }
+    },
+    [documentPath, insertAttachmentMarkdown, status],
+  )
+
+  const handleDropCapture = (event: DragEvent<HTMLElement>) => {
+    const files = Array.from(event.dataTransfer.files)
+    if (
+      files.length === 0 ||
+      (editorMode === 'visual' &&
+        files.every((file) => file.type.startsWith('image/')))
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    void saveAttachments(files)
+  }
+
+  const handleSourcePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData.files)
+    if (files.length === 0) {
+      return
+    }
+
+    event.preventDefault()
+    void saveAttachments(files)
+  }
 
   const handleSave = () => {
     if (preservationWarning && editorMode === 'visual') {
@@ -260,6 +423,35 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
             ) : null}
             {statusLabel}
           </span>
+          <input
+            className="sr-only"
+            multiple
+            onChange={(event) => {
+              void saveAttachments(Array.from(event.target.files ?? []))
+              event.target.value = ''
+            }}
+            ref={fileInputRef}
+            tabIndex={-1}
+            type="file"
+          />
+          <Button
+            disabled={
+              status !== 'ready' || isSavingAttachment || preservationWarning
+            }
+            onClick={() => fileInputRef.current?.click()}
+            size="sm"
+            variant="outline"
+          >
+            {isSavingAttachment ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-3.5 animate-spin"
+              />
+            ) : (
+              <Paperclip aria-hidden="true" className="size-3.5" />
+            )}
+            {isSavingAttachment ? '첨부 중' : '첨부'}
+          </Button>
           <Button
             disabled={!isDirty || status === 'saving' || status === 'conflict'}
             onClick={handleSave}
@@ -316,6 +508,15 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
         </div>
       ) : null}
 
+      {attachmentError ? (
+        <div
+          className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-950 sm:px-8"
+          role="alert"
+        >
+          {attachmentError}
+        </div>
+      ) : null}
+
       {parsedDocument.error ? (
         <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950 sm:px-8">
           Frontmatter를 해석할 수 없어 Markdown 원문 모드로 열었습니다.{' '}
@@ -361,7 +562,10 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
+      <div
+        className="min-h-0 flex-1 overflow-auto p-3 sm:p-6"
+        onDropCapture={handleDropCapture}
+      >
         <div className="mx-auto min-h-full max-w-4xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
           {editorMode === 'visual' && parsedDocument.value ? (
             <Suspense
@@ -377,8 +581,11 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
               <VisualMarkdownEditor
                 disabled={status === 'saving' || status === 'conflict'}
                 initialMarkdown={parsedDocument.value.body}
+                key={visualEditorRevision}
                 onChange={handleVisualChange}
                 onReady={handleVisualReady}
+                onUploadImage={uploadImage}
+                resolveAttachmentFile={resolveAttachmentFile}
               />
             </Suspense>
           ) : (
@@ -387,6 +594,8 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
               className="min-h-[40rem] w-full resize-none bg-white px-6 py-8 font-mono text-[15px] leading-7 text-stone-900 outline-none sm:px-10"
               disabled={status === 'saving' || status === 'conflict'}
               onChange={(event) => updateDraft(event.target.value)}
+              onPaste={handleSourcePaste}
+              ref={sourceTextareaRef}
               spellCheck={false}
               value={draftSource}
             />

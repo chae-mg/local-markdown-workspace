@@ -31,6 +31,11 @@ class FakeFileHandle {
           return
         }
 
+        if (value instanceof Blob) {
+          this.content = new Uint8Array(await value.arrayBuffer())
+          return
+        }
+
         if (ArrayBuffer.isView(value)) {
           this.content = new Uint8Array(
             value.buffer.slice(
@@ -164,6 +169,22 @@ describe('BrowserFileSystemService', () => {
     await expect(
       service.readTextFile(root, 'Archive/결정사항.md'),
     ).resolves.toBe('# 결정사항')
+  })
+
+  it('writes and reads binary attachments without changing their bytes', async () => {
+    const service = new BrowserFileSystemService()
+    const root = asDirectoryHandle(new FakeDirectoryHandle('Workspace'))
+    const bytes = new Uint8Array([0, 1, 2, 254, 255])
+
+    await service.createDirectory(root, 'Attachments')
+    await service.writeFile(
+      root,
+      'Attachments/img_test.png',
+      new File([bytes], '원본.png', { type: 'image/png' }),
+    )
+
+    const storedFile = await service.readFile(root, 'Attachments/img_test.png')
+    expect(new Uint8Array(await storedFile.arrayBuffer())).toEqual(bytes)
   })
 
   it('blocks normal mutations inside application metadata', async () => {
