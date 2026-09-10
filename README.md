@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization과 Phase 3 File Tree를 구현했습니다.
+Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization, Phase 3 File Tree와 Phase 4 Markdown Parser를 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -127,6 +127,9 @@ Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initial
 - 되돌릴 수 없음을 확인한 뒤에만 실행되는 명시적 휴지통 비우기
 - 파일·폴더 Drag & Drop 이동과 모바일·키보드용 목적지 선택 이동
 - 동일 이름 충돌과 폴더의 자기 하위 경로 이동 방지
+- YAML 1.2 기반 Markdown Frontmatter Parse·Serialize·부분 업데이트
+- Frontmatter 미변경 시 BOM·주석·따옴표·줄바꿈과 Markdown Body 원문 보존
+- 잘못된 YAML, 중복 Key, 비객체 Root와 지원하지 않는 값 차단
 
 ## 로컬 실행
 
