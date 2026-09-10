@@ -13,6 +13,7 @@ import {
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 
@@ -24,18 +25,30 @@ const navigationItems = [
 
 function WelcomePage() {
   const {
+    entries,
     errorMessage,
     initialize,
     initializeWorkspace,
     openWorkspace,
+    refreshWorkspace,
     reconnectWorkspace,
+    selectedPath,
+    selectEntry,
     status,
+    treeErrorMessage,
+    treeStatus,
     workspace,
   } = useWorkspaceStore()
 
   useEffect(() => {
     void initialize()
   }, [initialize])
+
+  useEffect(() => {
+    if (status === 'ready') {
+      void refreshWorkspace()
+    }
+  }, [refreshWorkspace, status, workspace?.manifest?.id])
 
   const isInitializing = status === 'initializing'
   const isOpening =
@@ -68,7 +81,7 @@ function WelcomePage() {
   return (
     <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[calc(100vh-2.5rem)]">
-        <aside className="hidden w-64 shrink-0 border-r border-stone-200 bg-stone-50/80 p-5 md:flex md:flex-col">
+        <aside className="hidden min-h-0 w-64 shrink-0 border-r border-stone-200 bg-stone-50/80 p-5 md:flex md:flex-col">
           <div className="flex items-center gap-3 px-1">
             <div className="grid size-9 place-items-center rounded-xl bg-stone-950 text-sm font-semibold tracking-tight text-white">
               LM
@@ -97,6 +110,19 @@ function WelcomePage() {
               </button>
             ))}
           </nav>
+
+          {isReady && workspace ? (
+            <WorkspaceTree
+              entries={entries}
+              errorMessage={treeErrorMessage}
+              isLoading={treeStatus === 'loading'}
+              key={workspace.manifest?.id ?? workspace.name}
+              onRefresh={() => void refreshWorkspace()}
+              onSelect={selectEntry}
+              selectedPath={selectedPath}
+              workspaceName={workspace.name}
+            />
+          ) : null}
 
           <div className="mt-auto rounded-2xl border border-stone-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
@@ -140,7 +166,7 @@ function WelcomePage() {
                 : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 2 · Workspace
+              Phase 3 · File Tree
             </span>
           </header>
 
@@ -175,9 +201,26 @@ function WelcomePage() {
                 {needsInitialization
                   ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
                   : isReady
-                    ? 'Workspace ID와 기본 폴더 구조를 확인했습니다. 다음 단계에서 문서 탐색과 파일 트리를 연결합니다.'
+                    ? selectedPath
+                      ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
+                      : '왼쪽 파일 트리에서 폴더를 펼치고 Markdown 문서를 선택할 수 있습니다. 현재 단계에서는 원본 파일을 변경하지 않습니다.'
                     : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
               </p>
+
+              {isReady && workspace ? (
+                <div className="mt-8 md:hidden">
+                  <WorkspaceTree
+                    entries={entries}
+                    errorMessage={treeErrorMessage}
+                    isLoading={treeStatus === 'loading'}
+                    key={`mobile-${workspace.manifest?.id ?? workspace.name}`}
+                    onRefresh={() => void refreshWorkspace()}
+                    onSelect={selectEntry}
+                    selectedPath={selectedPath}
+                    workspaceName={workspace.name}
+                  />
+                </div>
+              ) : null}
 
               <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                 <div className="flex flex-wrap gap-2">

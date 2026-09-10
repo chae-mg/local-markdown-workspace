@@ -9,7 +9,7 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 2 · Workspace')).toBeVisible()
+  await expect(page.getByText('Phase 3 · File Tree')).toBeVisible()
 })
 
 test('opens and persists a real serializable directory handle', async ({
@@ -63,6 +63,14 @@ test('opens and persists a real serializable directory handle', async ({
   ])
   expect(initializedWorkspace.manifest.workspaceVersion).toBe(1)
   expect(initializedWorkspace.manifest.id).toMatch(/^ws_/)
+  await expect(
+    page.getByRole('tree', { name: 'E2E Workspace 파일 트리' }),
+  ).toBeVisible()
+  await expect(page.getByRole('treeitem', { name: 'Documents' })).toBeVisible()
+  await expect(page.getByRole('treeitem', { name: 'Databases' })).toBeVisible()
+  await expect(
+    page.getByRole('treeitem', { name: 'Attachments' }),
+  ).toBeVisible()
 
   const persistedHandleName = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -134,6 +142,11 @@ test('asks before initializing a folder with existing files', async ({
 
   await page.getByRole('button', { name: 'Workspace로 초기화' }).click()
   await expect(page.getByText('Existing E2E Workspace · 연결됨')).toBeVisible()
+  await expect(
+    page.getByRole('treeitem', { name: '기존문서.md' }),
+  ).toBeVisible()
+  await page.getByRole('treeitem', { name: '기존문서.md' }).click()
+  await expect(page.getByText(/기존문서\.md 문서를 선택했습니다/)).toBeVisible()
 
   const existingContent = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()

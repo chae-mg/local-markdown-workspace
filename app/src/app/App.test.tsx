@@ -12,13 +12,17 @@ describe('App', () => {
       value: vi.fn(),
     })
     useWorkspaceStore.setState({
+      entries: [],
       errorMessage: null,
+      selectedPath: null,
       status: 'checking',
+      treeErrorMessage: null,
+      treeStatus: 'idle',
       workspace: null,
     })
   })
 
-  it('renders the Phase 2 workspace entry screen', async () => {
+  it('renders the Phase 3 workspace entry screen', async () => {
     render(
       <MemoryRouter>
         <App />
@@ -31,7 +35,7 @@ describe('App', () => {
     expect(
       await screen.findByRole('button', { name: '워크스페이스 열기' }),
     ).toBeEnabled()
-    expect(screen.getByText('Phase 2 · Workspace')).toBeInTheDocument()
+    expect(screen.getByText('Phase 3 · File Tree')).toBeInTheDocument()
   })
 
   it('asks before initializing a folder that already contains files', () => {

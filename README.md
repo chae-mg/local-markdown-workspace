@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization이 구현되었습니다.
+Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initialization과 Phase 3 File Tree의 읽기 전용 기반이 구현되었습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -117,6 +117,8 @@ Phase 0 개발 환경, Phase 1 File System Foundation, Phase 2 Workspace Initial
 - 기존 파일이 있는 폴더의 명시적 초기화 확인
 - `workspace.json` 생성·검증과 immutable Workspace ID 복원
 - `.workspace/`를 제외한 Markdown Workspace Scan
+- File Tree 펼치기·접기·선택·새로고침
+- File Tree 로딩·오류·빈 상태와 선택 유효성 검사
 
 ## 로컬 실행
 
