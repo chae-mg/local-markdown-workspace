@@ -16,6 +16,7 @@ import type { RecentWorkspaceStore } from '@/services/recent-workspace.store'
 import {
   assertMutableWorkspacePath,
   joinWorkspacePath,
+  normalizeWorkspaceEntryName,
   normalizeWorkspacePath,
   splitWorkspacePath,
 } from '@/utils/path'
@@ -41,32 +42,6 @@ export interface WorkspaceApplicationService {
   renameEntry(path: string, name: string): Promise<WorkspaceEntry>
   restoreTrashEntry(id: string, name: string): Promise<WorkspaceEntry>
   scanWorkspace(): Promise<WorkspaceEntry[]>
-}
-
-function normalizeEntryName(name: string) {
-  const normalizedName = name.trim().normalize('NFC')
-  const windowsDeviceName = normalizedName.split('.')[0]?.toUpperCase()
-  const hasControlCharacter = [...normalizedName].some(
-    (character) => (character.codePointAt(0) ?? 0) <= 31,
-  )
-
-  if (
-    !normalizedName ||
-    normalizedName === '.' ||
-    normalizedName === '..' ||
-    normalizedName === '.workspace' ||
-    hasControlCharacter ||
-    /[<>:"/\\|?*]/.test(normalizedName) ||
-    /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(windowsDeviceName ?? '') ||
-    /[. ]$/.test(normalizedName)
-  ) {
-    throw new WorkspaceError(
-      'invalid-path',
-      '운영체제에서 사용할 수 없는 이름입니다. 특수문자와 예약된 장치 이름을 제외해주세요.',
-    )
-  }
-
-  return normalizedName
 }
 
 function assertTrashId(id: string) {
@@ -317,7 +292,7 @@ export class WorkspaceService<
   async createMarkdownFile(parentPath: string, name: string) {
     const root = this.getCurrentHandle()
     const normalizedParentPath = normalizeWorkspacePath(parentPath)
-    const normalizedName = normalizeEntryName(name)
+    const normalizedName = normalizeWorkspaceEntryName(name)
     const fileName = normalizedName.toLowerCase().endsWith('.md')
       ? normalizedName
       : `${normalizedName}.md`
@@ -335,7 +310,7 @@ export class WorkspaceService<
   async createFolder(parentPath: string, name: string) {
     const root = this.getCurrentHandle()
     const normalizedParentPath = normalizeWorkspacePath(parentPath)
-    const folderName = normalizeEntryName(name)
+    const folderName = normalizeWorkspaceEntryName(name)
 
     await this.assertEntryAvailable(root, normalizedParentPath, folderName)
     const path = joinWorkspacePath(normalizedParentPath, folderName)
@@ -353,7 +328,7 @@ export class WorkspaceService<
     const sourceSegments = splitWorkspacePath(normalizedSourcePath)
     sourceSegments.pop()
     const parentPath = sourceSegments.join('/')
-    const normalizedName = normalizeEntryName(name)
+    const normalizedName = normalizeWorkspaceEntryName(name)
     const destinationName =
       source.kind === 'file' && !normalizedName.toLowerCase().endsWith('.md')
         ? `${normalizedName}.md`
@@ -487,7 +462,7 @@ export class WorkspaceService<
     const originalSegments = splitWorkspacePath(metadata.originalPath)
     originalSegments.pop()
     const parentPath = originalSegments.join('/')
-    const normalizedName = normalizeEntryName(name)
+    const normalizedName = normalizeWorkspaceEntryName(name)
     const restoredName =
       metadata.kind === 'file' && !normalizedName.toLowerCase().endsWith('.md')
         ? `${normalizedName}.md`
@@ -605,6 +580,9 @@ export class WorkspaceService<
     }
 
     await this.fileSystem.createDirectory(handle, '.workspace/trash', {
+      allowProtected: true,
+    })
+    await this.fileSystem.createDirectory(handle, '.workspace/schemas', {
       allowProtected: true,
     })
 

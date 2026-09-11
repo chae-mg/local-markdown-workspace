@@ -94,6 +94,11 @@ describe('WorkspaceService', () => {
       '.workspace/trash',
       { allowProtected: true },
     )
+    expect(fileSystem.createDirectory).toHaveBeenCalledWith(
+      handle,
+      '.workspace/schemas',
+      { allowProtected: true },
+    )
     expect(fileSystem.writeTextFile).toHaveBeenCalledWith(
       handle,
       '.workspace/workspace.json',

@@ -10,10 +10,11 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { DocumentEditor } from '@/components/editor/document-editor'
+import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
 import { Button } from '@/components/ui/button'
@@ -21,12 +22,16 @@ import { useDocumentStore } from '@/stores/document.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 
 const navigationItems = [
-  { label: '문서', icon: FileText },
-  { label: '데이터베이스', icon: Database },
-  { label: '검색', icon: Search },
-]
+  { id: 'documents', label: '문서', icon: FileText },
+  { id: 'databases', label: '데이터베이스', icon: Database },
+  { id: 'search', label: '검색', icon: Search },
+] as const
+
+type NavigationSection = 'documents' | 'databases'
 
 function WelcomePage() {
+  const [activeSection, setActiveSection] =
+    useState<NavigationSection>('documents')
   const {
     clearMutationError,
     createFolder,
@@ -117,13 +122,37 @@ function WelcomePage() {
   const handleEntrySelect = async (path: string) => {
     if (path === selectedPath || (await saveBeforeNavigation())) {
       selectEntry(path)
+      setActiveSection('documents')
     }
   }
 
   const handleDirectorySelect = async (path: string) => {
     if (await saveBeforeNavigation()) {
       selectDirectory(path)
+      setActiveSection('documents')
     }
+  }
+
+  const handleNavigation = async (
+    section: (typeof navigationItems)[number]['id'],
+  ) => {
+    if (section === 'search' || section === activeSection) {
+      return
+    }
+
+    if (await saveBeforeNavigation()) {
+      setActiveSection(section)
+    }
+  }
+
+  const handleOpenDatabaseItem = async (path: string) => {
+    await refreshWorkspace()
+    selectEntry(path)
+    setActiveSection('documents')
+  }
+
+  const handleDatabaseWorkspaceChanged = async () => {
+    await Promise.all([refreshWorkspace(), refreshTrash()])
   }
 
   const handleCreateFolder = async (parentPath: string, name: string) =>
@@ -164,14 +193,17 @@ function WelcomePage() {
           </div>
 
           <nav aria-label="주 탐색" className="mt-9 space-y-1">
-            {navigationItems.map(({ label, icon: Icon }, index) => (
+            {navigationItems.map(({ id, label, icon: Icon }) => (
               <button
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  index === 0
+                  id === activeSection
                     ? 'bg-white font-medium text-stone-950 shadow-sm ring-1 ring-stone-200'
                     : 'text-stone-500 hover:bg-white hover:text-stone-800'
                 }`}
+                disabled={id === 'search'}
                 key={label}
+                onClick={() => void handleNavigation(id)}
+                title={id === 'search' ? 'Phase 12에서 제공됩니다' : undefined}
                 type="button"
               >
                 <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
@@ -258,11 +290,41 @@ function WelcomePage() {
                 : '연결된 워크스페이스 없음'}
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 6 · Attachment
+              Phase 7 · Database Foundation
             </span>
           </header>
 
-          {isReady && selectedPath ? (
+          {isReady ? (
+            <nav
+              aria-label="모바일 주 탐색"
+              className="flex gap-1 border-b border-stone-200 bg-stone-50/80 p-2 md:hidden"
+            >
+              {navigationItems.map(({ id, label, icon: Icon }) => (
+                <button
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs transition-colors ${
+                    id === activeSection
+                      ? 'bg-white font-medium text-stone-950 shadow-sm ring-1 ring-stone-200'
+                      : 'text-stone-500'
+                  }`}
+                  disabled={id === 'search'}
+                  key={id}
+                  onClick={() => void handleNavigation(id)}
+                  type="button"
+                >
+                  <Icon aria-hidden="true" className="size-3.5" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : null}
+
+          {isReady && activeSection === 'databases' && workspace ? (
+            <DatabaseWorkspace
+              key={workspace.manifest?.id ?? workspace.name}
+              onOpenItem={handleOpenDatabaseItem}
+              onWorkspaceChanged={handleDatabaseWorkspaceChanged}
+            />
+          ) : isReady && selectedPath ? (
             <DocumentEditor
               key={selectedPath}
               onClose={() => void handleDirectorySelect(selectedDirectoryPath)}

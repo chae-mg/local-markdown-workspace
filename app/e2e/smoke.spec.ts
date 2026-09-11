@@ -9,10 +9,10 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 6 · Attachment')).toBeVisible()
+  await expect(page.getByText('Phase 7 · Database Foundation')).toBeVisible()
 })
 
-test('opens and persists a real serializable directory handle', async ({
+test('uses a real directory handle for the complete workspace flow', async ({
   page,
 }) => {
   test.skip(
@@ -72,6 +72,82 @@ test('opens and persists a real serializable directory handle', async ({
     page.getByRole('treeitem', { name: 'Attachments' }),
   ).toBeVisible()
 
+  await page.getByRole('button', { name: '데이터베이스' }).click()
+  await expect(
+    page.getByRole('heading', { name: '데이터베이스' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '새 데이터베이스' }).click()
+  await page
+    .getByRole('textbox', { name: '새 데이터베이스 이름' })
+    .fill('업무 보드')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '업무 보드' })).toBeVisible()
+
+  await page.getByRole('button', { name: '새 항목' }).click()
+  await page
+    .getByRole('textbox', { name: '새 항목 제목' })
+    .fill('대시보드 개선')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await expect(page.getByText('대시보드 개선')).toBeVisible()
+
+  const databaseFiles = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const metadata = await workspace.getDirectoryHandle('.workspace')
+    const schemas = await metadata.getDirectoryHandle('schemas')
+    const schemaFiles: string[] = []
+    for await (const entry of schemas.values()) {
+      schemaFiles.push(entry.name)
+    }
+    const schemaFile = await (
+      await schemas.getFileHandle(schemaFiles[0] ?? '')
+    ).getFile()
+    const schema = JSON.parse(await schemaFile.text()) as {
+      folder?: string
+      id?: string
+      name?: string
+    }
+    const databases = await workspace.getDirectoryHandle('Databases')
+    const board = await databases.getDirectoryHandle('업무 보드')
+    const items = await board.getDirectoryHandle('items')
+    const itemFiles: string[] = []
+    for await (const entry of items.values()) {
+      itemFiles.push(entry.name)
+    }
+    const itemSource = await (
+      await items.getFileHandle(itemFiles[0] ?? '')
+    ).getFile()
+    return {
+      itemFiles,
+      itemSource: await itemSource.text(),
+      schema,
+      schemaFiles,
+    }
+  })
+
+  expect(databaseFiles.schemaFiles).toHaveLength(1)
+  expect(databaseFiles.schemaFiles[0]).toMatch(/^db_[a-f0-9]+\.json$/)
+  expect(databaseFiles.schema).toMatchObject({
+    folder: 'Databases/업무 보드/items',
+    name: '업무 보드',
+  })
+  expect(databaseFiles.schema.id).toMatch(/^db_[a-f0-9]+$/)
+  expect(databaseFiles.itemFiles).toHaveLength(1)
+  expect(databaseFiles.itemFiles[0]).toMatch(/^item_[a-f0-9]+\.md$/)
+  expect(databaseFiles.itemSource).toMatch(
+    /^---\nid: item_[a-f0-9]+\n---\n\n# 대시보드 개선\n$/,
+  )
+
+  await page
+    .getByRole('button', { name: '대시보드 개선 Markdown 열기' })
+    .click()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await expect(
+    page.getByRole('textbox', { name: 'Markdown 원문' }),
+  ).toHaveValue(databaseFiles.itemSource)
+
+  await page.getByRole('treeitem', { name: 'Documents' }).click()
   await page
     .getByRole('button', { name: 'Documents에 새 Markdown 문서' })
     .click()
@@ -438,39 +514,6 @@ test('opens and persists a real serializable directory handle', async ({
   })
   expect(menuMovedDocumentLocation.content).toBe('')
   expect(menuMovedDocumentLocation.oldLocationExists).toBe(false)
-
-  const persistedHandleName = await page.evaluate(async () => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('local-markdown-workspace', 1)
-      request.addEventListener('success', () => resolve(request.result), {
-        once: true,
-      })
-      request.addEventListener('error', () => reject(request.error), {
-        once: true,
-      })
-    })
-    const transaction = database.transaction('workspace-handles', 'readonly')
-    const storedWorkspace = await new Promise<
-      { handle?: { name?: string } } | undefined
-    >((resolve, reject) => {
-      const request = transaction
-        .objectStore('workspace-handles')
-        .get('recent-workspace')
-      request.addEventListener('success', () => resolve(request.result), {
-        once: true,
-      })
-      request.addEventListener('error', () => reject(request.error), {
-        once: true,
-      })
-    })
-    database.close()
-    return storedWorkspace?.handle?.name
-  })
-
-  expect(persistedHandleName).toBe('E2E Workspace')
-
-  await page.reload()
-  await expect(page.getByText('E2E Workspace · 연결됨')).toBeVisible()
 })
 
 test('asks before initializing a folder with existing files', async ({

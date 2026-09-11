@@ -28,7 +28,7 @@ describe('App', () => {
     })
   })
 
-  it('renders the Phase 6 workspace entry screen', async () => {
+  it('renders the Phase 7 workspace entry screen', async () => {
     render(
       <MemoryRouter>
         <App />
@@ -41,7 +41,9 @@ describe('App', () => {
     expect(
       await screen.findByRole('button', { name: '워크스페이스 열기' }),
     ).toBeEnabled()
-    expect(screen.getByText('Phase 6 · Attachment')).toBeInTheDocument()
+    expect(
+      screen.getByText('Phase 7 · Database Foundation'),
+    ).toBeInTheDocument()
   })
 
   it('asks before initializing a folder that already contains files', () => {

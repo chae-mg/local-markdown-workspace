@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 6 Attachment까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 7 Database Foundation까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -134,6 +134,12 @@ Phase 0 개발 환경부터 Phase 6 Attachment까지 구현했습니다.
 - 파일 선택, Drag & Drop, 클립보드 이미지 붙여넣기
 - 문서 위치 기준의 이동 가능한 상대경로 Markdown 삽입
 - 로컬 Attachment 이미지를 Blob URL로 변환한 시각 편집기 미리보기
+- Database별 `items/` 폴더와 `.workspace/schemas/db_*.json` 생성
+- 고유 ID Frontmatter를 가진 Markdown Item 생성·조회
+- 첫 H1을 Item 제목으로 사용하고 나머지 Frontmatter를 Property 값으로 로드
+- Database 목록에서 Item Markdown 파일을 기존 편집기로 바로 열기
+- 중복 Database 폴더·Item ID와 잘못된 Schema/Item 형식 차단
+- Database Item 삭제 시 기존 Workspace 휴지통 흐름 재사용
 - 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원
 - 되돌릴 수 없음을 확인한 뒤에만 실행되는 명시적 휴지통 비우기
 - 파일·폴더 Drag & Drop 이동과 모바일·키보드용 목적지 선택 이동
@@ -166,7 +172,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다. OPFS Directory Handle 직렬화는 Linux Headless Chromium을 종료시키므로, 실제 Handle 저장·복원 E2E는 로컬 Chrome에서 실행하고 CI에서는 관련 Store와 Service를 단위·통합 테스트로 검증합니다.
+로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다. OPFS Directory Handle 역직렬화는 일부 Headless Chromium을 종료시킬 수 있으므로, E2E는 실제 Handle을 사용한 파일 흐름을 검증하고 Handle 저장·복원은 관련 Store와 Service 단위·통합 테스트로 검증합니다.
 
 실제 사용자 Markdown Workspace는 이 저장소 밖에 둡니다. 자동화 테스트용 Workspace가 필요하면 `app/test/fixtures/workspaces/` 아래에 재현 가능한 Fixture만 추가합니다.
 
