@@ -11,6 +11,7 @@ import {
   type MarkdownApplicationService,
 } from '@/services/markdown.service'
 import type { FileSystemService } from '@/services/file-system.service'
+import { parsePropertyDefinitions } from '@/services/schema-validation'
 import {
   joinWorkspacePath,
   normalizeWorkspaceEntryName,
@@ -105,7 +106,7 @@ function parseSchema(source: string, expectedId: string): DatabaseSchema {
     id: expectedId,
     name: value.name,
     folder,
-    properties: value.properties,
+    properties: parsePropertyDefinitions(value.properties),
   }
 }
 

@@ -6,12 +6,14 @@ import {
   LoaderCircle,
   Plus,
   RefreshCw,
+  Settings2,
   Trash2,
   TriangleAlert,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { databaseService } from '@/app/composition-root'
+import { SchemaPropertyManager } from '@/components/database/schema-property-manager'
 import { Button } from '@/components/ui/button'
 import type { DatabaseItem, DatabaseSchema } from '@/domain/database'
 import type { DatabaseApplicationService } from '@/services/database.service'
@@ -42,6 +44,7 @@ export function DatabaseWorkspace({
   const [itemTitle, setItemTitle] = useState('')
   const [showDatabaseForm, setShowDatabaseForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
+  const [showSchemaManager, setShowSchemaManager] = useState(false)
   const [status, setStatus] = useState<
     'loading' | 'ready' | 'creating-database' | 'creating-item' | 'deleting'
   >('loading')
@@ -102,6 +105,7 @@ export function DatabaseWorkspace({
       return
     }
     setSelectedDatabaseId(databaseId)
+    setShowSchemaManager(false)
     void loadItems(databaseId)
   }
 
@@ -122,6 +126,7 @@ export function DatabaseWorkspace({
       )
       setSelectedDatabaseId(database.id)
       setItems([])
+      setShowSchemaManager(false)
       setDatabaseName('')
       setShowDatabaseForm(false)
       await onWorkspaceChanged()
@@ -330,14 +335,41 @@ export function DatabaseWorkspace({
                       {selectedDatabase.folder}
                     </p>
                   </div>
-                  <Button
-                    disabled={isMutating}
-                    onClick={() => setShowItemForm((visible) => !visible)}
-                    size="sm"
-                  >
-                    <FilePlus2 aria-hidden="true" className="size-4" />새 항목
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      aria-expanded={showSchemaManager}
+                      disabled={isMutating}
+                      onClick={() =>
+                        setShowSchemaManager((visible) => !visible)
+                      }
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Settings2 aria-hidden="true" className="size-4" />
+                      속성
+                    </Button>
+                    <Button
+                      disabled={isMutating}
+                      onClick={() => setShowItemForm((visible) => !visible)}
+                      size="sm"
+                    >
+                      <FilePlus2 aria-hidden="true" className="size-4" />새 항목
+                    </Button>
+                  </div>
                 </div>
+
+                {showSchemaManager ? (
+                  <SchemaPropertyManager
+                    database={selectedDatabase}
+                    onChange={(schema) =>
+                      setDatabases((current) =>
+                        current.map((database) =>
+                          database.id === schema.id ? schema : database,
+                        ),
+                      )
+                    }
+                  />
+                ) : null}
 
                 {showItemForm ? (
                   <form

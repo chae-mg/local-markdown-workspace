@@ -9,7 +9,7 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 7 · Database Foundation')).toBeVisible()
+  await expect(page.getByText('Phase 8 · Schema Engine')).toBeVisible()
 })
 
 test('uses a real directory handle for the complete workspace flow', async ({
@@ -83,6 +83,41 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await page.getByRole('button', { name: '생성', exact: true }).click()
   await expect(page.getByRole('heading', { name: '업무 보드' })).toBeVisible()
 
+  await page.getByRole('button', { name: '속성', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '속성 관리' })).toBeVisible()
+  await page.getByRole('button', { name: '속성 추가' }).click()
+  await page.getByRole('textbox', { name: '새 속성 이름' }).fill('상태')
+  await page
+    .getByRole('combobox', { name: '새 속성 타입' })
+    .selectOption('select')
+  await page.getByRole('textbox', { name: '새 속성 이름' }).press('Enter')
+
+  await page.getByRole('button', { name: '상태 Option 펼치기' }).click()
+  await page.getByRole('textbox', { name: '상태 새 Option 이름' }).fill('예정')
+  await page
+    .getByRole('textbox', { name: '상태 새 Option 이름' })
+    .press('Enter')
+  await expect(page.getByText('예정', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: '속성 추가' }).click()
+  await page.getByRole('textbox', { name: '새 속성 이름' }).fill('완료')
+  await page
+    .getByRole('combobox', { name: '새 속성 타입' })
+    .selectOption('checkbox')
+  await page.getByRole('textbox', { name: '새 속성 이름' }).press('Enter')
+
+  await page.getByRole('button', { name: '완료 이름 변경' }).click()
+  await page.getByRole('textbox', { name: '새 이름' }).fill('완료 여부')
+  await page.getByRole('button', { name: '이름 변경 저장' }).click()
+  await page.getByRole('button', { name: '완료 여부 위로 이동' }).click()
+  await page.getByRole('button', { name: '완료 여부 속성 삭제' }).click()
+  await page.getByRole('button', { name: '삭제된 속성 1개' }).click()
+  await page.getByRole('button', { name: '완료 여부 속성 복원' }).click()
+  await expect(
+    page.getByRole('combobox', { name: '완료 여부 타입' }),
+  ).toBeEnabled()
+  await page.getByRole('button', { name: '속성', exact: true }).click()
+
   await page.getByRole('button', { name: '새 항목' }).click()
   await page
     .getByRole('textbox', { name: '새 항목 제목' })
@@ -107,6 +142,17 @@ test('uses a real directory handle for the complete workspace flow', async ({
       folder?: string
       id?: string
       name?: string
+      properties?: Record<
+        string,
+        {
+          deleted?: boolean
+          id?: string
+          name?: string
+          options?: Array<{ deleted?: boolean; id?: string; name?: string }>
+          order?: number
+          type?: string
+        }
+      >
     }
     const databases = await workspace.getDirectoryHandle('Databases')
     const board = await databases.getDirectoryHandle('업무 보드')
@@ -133,6 +179,30 @@ test('uses a real directory handle for the complete workspace flow', async ({
     name: '업무 보드',
   })
   expect(databaseFiles.schema.id).toMatch(/^db_[a-f0-9]+$/)
+  const storedProperties = Object.values(databaseFiles.schema.properties ?? {})
+  expect(storedProperties).toHaveLength(2)
+  expect(storedProperties).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        deleted: false,
+        name: '상태',
+        order: 2,
+        type: 'select',
+        options: [
+          expect.objectContaining({
+            id: expect.stringMatching(/^opt_/),
+            name: '예정',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        deleted: false,
+        name: '완료 여부',
+        order: 1,
+        type: 'checkbox',
+      }),
+    ]),
+  )
   expect(databaseFiles.itemFiles).toHaveLength(1)
   expect(databaseFiles.itemFiles[0]).toMatch(/^item_[a-f0-9]+\.md$/)
   expect(databaseFiles.itemSource).toMatch(

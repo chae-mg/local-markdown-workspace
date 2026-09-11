@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 7 Database Foundation까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 8 Schema Engine까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -140,6 +140,12 @@ Phase 0 개발 환경부터 Phase 7 Database Foundation까지 구현했습니다
 - Database 목록에서 Item Markdown 파일을 기존 편집기로 바로 열기
 - 중복 Database 폴더·Item ID와 잘못된 Schema/Item 형식 차단
 - Database Item 삭제 시 기존 Workspace 휴지통 흐름 재사용
+- Text, Number, Select, Multi-select, Checkbox, Date Property 생성
+- Property 이름 변경·순서 이동과 ID 안정성 유지
+- Property 및 Select Option Soft Delete·복원
+- Select Option 생성·이름 변경과 Option ID 기반 저장
+- 기존 Item 값을 검사해 호환되지 않는 Property 타입 변경 차단
+- Schema 변경 시 Item Markdown Frontmatter와 본문 미수정
 - 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원
 - 되돌릴 수 없음을 확인한 뒤에만 실행되는 명시적 휴지통 비우기
 - 파일·폴더 Drag & Drop 이동과 모바일·키보드용 목적지 선택 이동
