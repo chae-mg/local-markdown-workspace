@@ -811,7 +811,144 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 ---
 
-# 16. Phase 9 — Table View
+# 16. Phase 8.5 — Preferences / 편집 환경 설정
+
+## 목표
+
+자동 저장처럼 편집 흐름에 직접 영향을 주는 동작을 사용자가 선택할 수 있게 하고, 테마와 기본 편집 모드를 한곳에서 관리한다.
+
+이 Phase는 Table View에 들어가기 전에 공통 설정 기반을 먼저 마련한다. 설정 변경은 문서나 Database Item의 내용을 수정하지 않아야 한다.
+
+## 설정 진입점
+
+- Desktop Sidebar 하단에 `설정` 버튼을 둔다.
+- 좁은 화면에서도 같은 설정 화면에 접근할 수 있어야 한다.
+- 설정은 Modal 또는 Side Panel로 제공하되, 현재 편집 문맥을 잃지 않고 닫을 수 있어야 한다.
+- 키보드 이동, Focus 표시, Label 연결 등 기본 접근성을 지킨다.
+
+## 설정 항목
+
+### 자동 저장
+
+- `사용` / `사용 안 함`을 선택할 수 있다.
+- 자동 저장이 켜져 있을 때 Debounce 간격을 `1초`, `3초`, `5초` 중 선택할 수 있다.
+- 초기값은 기존 동작과 같은 `사용`, `1초`로 한다.
+- 자동 저장을 꺼도 상단 저장 버튼과 `Ctrl+S` / `Cmd+S` 수동 저장은 항상 제공한다.
+- 설정을 끄는 순간 이미 예약된 자동 저장은 취소하되, 작성 중인 내용은 메모리에 유지한다.
+- 수동 저장과 자동 저장 모두 Phase 5의 External Change Guard를 동일하게 통과해야 한다.
+
+### 테마
+
+- `시스템 설정`, `라이트`, `다크`를 제공한다.
+- 초기값은 `시스템 설정`이다.
+- `시스템 설정`에서는 `prefers-color-scheme` 변경을 즉시 반영한다.
+- 앱 Shell, File Tree, Editor, Database, Dialog, 상태 표시를 포함한 모든 주요 화면에 같은 테마를 적용한다.
+- 페이지를 다시 열 때 잘못된 테마가 잠시 보이는 현상을 최소화한다.
+
+### 기본 편집 모드
+
+- `에디터`와 `Markdown` 중 새로 여는 문서의 기본 모드를 선택한다.
+- 초기값은 `에디터`다.
+- 이미 열려 있는 문서의 현재 모드는 설정을 바꾸는 즉시 강제로 전환하지 않는다. 다음에 여는 문서부터 적용한다.
+
+## Preference Model
+
+```ts
+type ThemePreference = "system" | "light" | "dark"
+type DefaultEditorMode = "visual" | "source"
+
+interface UserPreferences {
+  version: 1
+  autosave: {
+    enabled: boolean
+    delayMs: 1000 | 3000 | 5000
+  }
+  theme: ThemePreference
+  defaultEditorMode: DefaultEditorMode
+}
+```
+
+## 저장 위치와 책임
+
+- 환경설정은 브라우저 `localStorage`에 Version이 있는 JSON으로 저장한다.
+- 환경설정은 현재 브라우저에만 적용하며 Workspace 파일이나 `.workspace/`에는 기록하지 않는다.
+- 환경설정은 Markdown Source of Truth에 포함되지 않으며 Workspace를 이동하거나 공유해도 따라가지 않는다.
+- 누락되거나 잘못된 값은 항목별 기본값으로 복구하고 앱 시작을 차단하지 않는다.
+- UI Component가 저장소를 직접 읽고 쓰지 않도록 `PreferencesStore`가 Load, Validation, Update, Persist를 담당한다.
+
+## 미저장 변경 보호
+
+자동 저장이 꺼져 있고 변경사항이 있으면 명확한 `저장 안 됨` 상태를 표시한다.
+
+앱 안에서 다른 문서나 화면으로 이동할 때는 다음 선택지를 제공한다.
+
+```text
+[저장하고 이동]
+[저장하지 않고 이동]
+[취소]
+```
+
+- `저장하고 이동`은 저장 성공 후에만 이동한다.
+- 충돌이나 파일 쓰기 실패가 발생하면 현재 화면과 편집 내용을 유지한다.
+- `저장하지 않고 이동`은 해당 문서의 메모리 Draft만 폐기하며 디스크 파일은 수정하지 않는다.
+- Browser 새로고침, Tab 닫기, 창 닫기에는 `beforeunload` 경고를 사용한다.
+- 자동 저장이 켜져 있어도 아직 Debounce 대기 중이거나 저장 실패 상태라면 같은 보호 규칙을 적용한다.
+
+## 구현 순서
+
+1. Preference Model, 기본값, Validation, 영속화 Store를 구현한다.
+2. 설정 진입점과 설정 화면을 추가한다.
+3. 기존 1초 고정 자동 저장을 Preference 기반 동작으로 교체한다.
+4. 수동 저장 단축키와 미저장 이동 보호를 연결한다.
+5. Theme 적용과 시스템 테마 변경 감지를 연결한다.
+6. 기본 편집 모드를 문서 Open 흐름에 연결한다.
+7. Unit, Integration, E2E, 실제 Chrome 시각 검증을 수행한다.
+
+## Test
+
+### Unit / Integration
+
+- 저장된 설정이 없을 때 기본값 사용
+- 올바른 설정 저장 및 재실행 후 복원
+- 일부 필드 누락, 잘못된 값, 미래 Version 입력 시 안전한 복구
+- 자동 저장 Off에서 Debounce 저장 미실행
+- 자동 저장 On에서 선택한 간격 후 한 번만 저장
+- 설정 변경 시 대기 중인 자동 저장 취소 및 새 간격 적용
+- `Ctrl+S` / `Cmd+S` 수동 저장
+- 수동/자동 저장 모두 외부 수정 충돌 차단
+- 기본 편집 모드가 다음에 여는 문서부터 적용
+- 시스템 테마 변경 감지와 Listener 정리
+
+### E2E / Manual Browser Test
+
+- 설정 화면을 열고 모든 항목 변경 가능
+- 자동 저장 Off 상태에서 입력 후 파일이 자동 변경되지 않음
+- 저장 버튼 또는 단축키 사용 후 파일 변경
+- 미저장 상태에서 문서 이동 시 저장, 폐기, 취소 흐름 확인
+- 새로고침 후 설정 유지
+- 라이트/다크 테마에서 주요 화면의 가독성과 Focus 상태 확인
+- Desktop과 좁은 화면 모두에서 설정 접근 가능
+
+## 제외 범위
+
+- Workspace별 설정
+- 기기 간 설정 동기화
+- 사용자 정의 색상 Theme
+- 자동 저장 간격의 임의 숫자 입력
+- 여러 문서 Draft의 장기 복구
+
+## 완료 조건
+
+- 사용자가 자동 저장을 끄고 명시적으로 저장하며 편집할 수 있다.
+- 자동 저장 간격, Theme, 기본 편집 모드가 재실행 후에도 유지된다.
+- 미저장 변경이 사용자 확인 없이 사라지지 않는다.
+- 설정 변경이 Markdown 및 `.workspace/` 파일을 불필요하게 수정하지 않는다.
+- 모든 저장 경로에서 외부 변경 충돌과 쓰기 실패를 안전하게 처리한다.
+- 라이트/다크 Theme에서 편집기와 주요 화면이 일관되게 표시된다.
+
+---
+
+# 17. Phase 9 — Table View
 
 ## 목표
 
@@ -859,7 +996,7 @@ Table에서 값을 바꾸면 해당 `.md` Frontmatter가 즉시 변경된다.
 
 ---
 
-# 17. Phase 10 — Kanban View
+# 18. Phase 10 — Kanban View
 
 ## 목표
 
@@ -896,7 +1033,7 @@ Table ↔ Kanban 간 데이터 불일치가 없어야 한다.
 
 ---
 
-# 18. Phase 11 — View Engine
+# 19. Phase 11 — View Engine
 
 ## 목표
 
@@ -927,7 +1064,7 @@ MVP UI에서는 View 1~2개만 허용해도 되지만 Data Model은 다중 View�
 
 ---
 
-# 19. Phase 12 — External Modification Detection 고도화
+# 20. Phase 12 — External Modification Detection 고도화
 
 ## 목표
 
@@ -974,7 +1111,7 @@ MVP에서는 Merge 기능 제외.
 
 ---
 
-# 20. Phase 13 — Undo / Backup / Trash
+# 21. Phase 13 — Undo / Backup / Trash
 
 ## 목표
 
@@ -1026,7 +1163,7 @@ Kanban Move
 
 ---
 
-# 21. Phase 14 — Search
+# 22. Phase 14 — Search
 
 ## 목표
 
@@ -1047,7 +1184,7 @@ Workspace의 Markdown을 Source of Truth로 유지하면서 검색 가능한 파
 
 ---
 
-# 22. Phase 15 — Health Check / Migration
+# 23. Phase 15 — Health Check / Migration
 
 ## 목표
 
@@ -1078,7 +1215,7 @@ Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행
 
 ---
 
-# 23. Phase 16 — QA / Release
+# 24. Phase 16 — QA / Release
 
 ## 테스트 전략
 
