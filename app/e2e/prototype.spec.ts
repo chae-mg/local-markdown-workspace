@@ -13,6 +13,10 @@ test.describe('Notion-style UI prototype', () => {
     await expect(
       page.getByRole('heading', { name: '제품 로드맵' }),
     ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: '공유', exact: true }),
+    ).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '즐겨찾기' })).toHaveCount(0)
 
     await page
       .getByRole('button', { name: '데이터베이스', exact: true })
@@ -38,6 +42,34 @@ test.describe('Notion-style UI prototype', () => {
 
     await dialog.getByRole('button', { name: '다크' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  })
+
+  test('stores a reusable custom accent color', async ({ page }) => {
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('button', { name: '커스텀' }).click()
+    await page.getByRole('textbox', { name: 'HEX' }).fill('#E11D48')
+    await page.getByRole('button', { name: '컬러 저장' }).click()
+
+    const accent = await page
+      .locator('html')
+      .evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--accent').trim(),
+      )
+    expect(accent).toBe('#E11D48')
+    await expect(page.getByRole('status')).toContainText(
+      '커스텀 키 컬러를 저장했습니다.',
+    )
+
+    await page.reload()
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+
+    await expect(page.getByRole('button', { name: '커스텀' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByRole('textbox', { name: 'HEX' })).toHaveValue(
+      '#E11D48',
+    )
   })
 
   test('uses a drawer sidebar on a narrow screen', async ({ page }) => {

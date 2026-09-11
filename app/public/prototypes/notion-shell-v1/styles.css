@@ -11,6 +11,7 @@
   --text-soft: #787774;
   --text-faint: #a5a5a1;
   --accent: #2383e2;
+  --accent-contrast: #ffffff;
   --accent-soft: #e7f3ff;
   --shadow: 0 14px 50px rgb(15 15 15 / 12%);
   font-family:
@@ -36,6 +37,7 @@
   --text-soft: #a6a6a2;
   --text-faint: #72726f;
   --accent: #529cca;
+  --accent-contrast: #ffffff;
   --accent-soft: #243746;
   --shadow: 0 18px 60px rgb(0 0 0 / 42%);
 }
@@ -412,20 +414,9 @@ svg {
   font-size: 11px;
 }
 
-.text-button,
 .topbar-actions > .icon-button {
   border: 0;
   background: transparent;
-}
-
-.text-button {
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.text-button:hover {
-  background: var(--surface-hover);
 }
 
 .view {
@@ -620,7 +611,7 @@ kbd {
   border: 0;
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
   font-size: 12px;
   font-weight: 650;
 }
@@ -796,6 +787,7 @@ td:first-child {
 
 .settings-dialog {
   width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -829,6 +821,7 @@ td:first-child {
 .settings-body {
   display: grid;
   min-height: 410px;
+  max-height: calc(100vh - 120px);
   grid-template-columns: 155px 1fr;
 }
 
@@ -859,6 +852,7 @@ td:first-child {
 }
 
 .settings-content {
+  overflow-y: auto;
   padding: 9px 24px 24px;
 }
 
@@ -1002,6 +996,157 @@ td:first-child {
 
 .system-preview::before {
   background: linear-gradient(90deg, #f0f0ee 50%, #292929 50%);
+}
+
+.accent-options {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.accent-options button {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  gap: 7px;
+  padding: 9px 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.accent-options button:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.accent-options button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.accent-options b {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accent-swatch {
+  display: block;
+  width: 23px;
+  height: 23px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.blue-swatch {
+  background: #2383e2;
+}
+
+.orange-swatch {
+  background: #d9730d;
+}
+
+.purple-swatch {
+  background: #9065b0;
+}
+
+.monochrome-swatch {
+  background: linear-gradient(135deg, #2f2f2d 50%, #f4f4f2 50%);
+}
+
+.custom-swatch {
+  background: conic-gradient(
+    from 45deg,
+    #e03e3e,
+    #d9730d,
+    #dfab01,
+    #0f9d75,
+    #2383e2,
+    #9065b0,
+    #e03e3e
+  );
+}
+
+.custom-accent-editor {
+  position: relative;
+  display: grid;
+  align-items: end;
+  gap: 9px;
+  margin-top: 13px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  grid-template-columns: auto 1fr auto;
+}
+
+.custom-accent-editor[hidden] {
+  display: none;
+}
+
+.custom-accent-editor label {
+  display: grid;
+  gap: 5px;
+}
+
+.custom-accent-editor label > span {
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+#custom-accent-picker {
+  width: 42px;
+  height: 31px;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.hex-field input {
+  width: 100%;
+  height: 31px;
+  padding: 0 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.hex-field input.invalid {
+  border-color: #e03e3e;
+}
+
+.save-accent-button {
+  height: 31px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.field-error {
+  min-height: 14px;
+  margin: 0 !important;
+  color: #c93c37 !important;
+  font-size: 10px !important;
+  grid-column: 2 / -1;
 }
 
 .switch {
@@ -1151,8 +1296,7 @@ td:first-child {
 
   .breadcrumbs span,
   .breadcrumbs b,
-  .save-state,
-  .text-button {
+  .save-state {
     display: none;
   }
 

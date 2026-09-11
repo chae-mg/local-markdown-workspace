@@ -171,10 +171,6 @@
             <span class="save-state"
               ><span class="status-dot"></span> 저장됨</span
             >
-            <button class="text-button" type="button">공유</button>
-            <button class="icon-button" type="button" aria-label="즐겨찾기">
-              ☆
-            </button>
             <button class="icon-button" type="button" aria-label="더보기">
               •••
             </button>
@@ -372,7 +368,7 @@
                 <p>현재 기기에서 사용할 화면 모드를 선택합니다.</p>
               </div>
               <div class="theme-options" role="radiogroup" aria-label="테마">
-                <button class="active" data-theme-choice="light" type="button">
+                <button data-theme-choice="light" type="button">
                   <span class="theme-preview light-preview"><i></i></span>
                   <b>라이트</b>
                 </button>
@@ -380,10 +376,83 @@
                   <span class="theme-preview dark-preview"><i></i></span>
                   <b>다크</b>
                 </button>
-                <button data-theme-choice="system" type="button">
+                <button class="active" data-theme-choice="system" type="button">
                   <span class="theme-preview system-preview"><i></i></span>
                   <b>시스템</b>
                 </button>
+              </div>
+            </div>
+            <div class="setting-block">
+              <div>
+                <strong>키 컬러</strong>
+                <p>
+                  버튼과 선택 상태에 사용할 강조 색상을 선택합니다. 문서
+                  내용에는 영향을 주지 않습니다.
+                </p>
+              </div>
+              <div
+                class="accent-options"
+                role="radiogroup"
+                aria-label="키 컬러"
+              >
+                <button class="active" data-accent-choice="blue" type="button">
+                  <span class="accent-swatch blue-swatch"></span>
+                  <b>파랑</b>
+                </button>
+                <button data-accent-choice="orange" type="button">
+                  <span class="accent-swatch orange-swatch"></span>
+                  <b>주황</b>
+                </button>
+                <button data-accent-choice="purple" type="button">
+                  <span class="accent-swatch purple-swatch"></span>
+                  <b>보라</b>
+                </button>
+                <button data-accent-choice="monochrome" type="button">
+                  <span class="accent-swatch monochrome-swatch"></span>
+                  <b>검정/흰색</b>
+                </button>
+                <button data-accent-choice="custom" type="button">
+                  <span class="accent-swatch custom-swatch"></span>
+                  <b>커스텀</b>
+                </button>
+              </div>
+              <div
+                class="custom-accent-editor"
+                id="custom-accent-editor"
+                hidden
+              >
+                <label>
+                  <span>색상</span>
+                  <input
+                    id="custom-accent-picker"
+                    type="color"
+                    value="#2f80ed"
+                    aria-label="커스텀 키 컬러 선택"
+                  />
+                </label>
+                <label class="hex-field">
+                  <span>HEX</span>
+                  <input
+                    id="custom-accent-hex"
+                    type="text"
+                    value="#2F80ED"
+                    maxlength="7"
+                    spellcheck="false"
+                    aria-describedby="custom-accent-error"
+                  />
+                </label>
+                <button
+                  class="save-accent-button"
+                  id="save-custom-accent"
+                  type="button"
+                >
+                  컬러 저장
+                </button>
+                <p
+                  class="field-error"
+                  id="custom-accent-error"
+                  role="alert"
+                ></p>
               </div>
             </div>
             <div class="setting-row">

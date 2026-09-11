@@ -860,6 +860,15 @@ Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용
 - 앱 Shell, File Tree, Editor, Database, Dialog, 상태 표시를 포함한 모든 주요 화면에 같은 테마를 적용한다.
 - 페이지를 다시 열 때 잘못된 테마가 잠시 보이는 현상을 최소화한다.
 
+### 키 컬러
+
+- `파랑`, `주황`, `보라`, `검정/흰색`, `커스텀`을 제공한다.
+- 초기값은 `파랑`이다.
+- 키 컬러는 주요 Button, 선택 상태, Toggle, Focus Ring 등 상호작용 강조에만 사용하며 문서 본문과 전체 배경을 임의로 변경하지 않는다.
+- `검정/흰색`은 Light Theme에서 검정, Dark Theme에서 흰색 계열을 사용한다.
+- `커스텀`은 Color Picker와 6자리 HEX 입력을 제공하고 유효한 값만 저장한다.
+- 선택 색상의 밝기에 따라 Button 글자색을 검정 또는 흰색으로 자동 결정해 대비를 유지한다.
+
 ### 기본 편집 모드
 
 - `에디터`와 `Markdown` 중 새로 여는 문서의 기본 모드를 선택한다.
@@ -870,6 +879,7 @@ Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용
 
 ```ts
 type ThemePreference = "system" | "light" | "dark"
+type AccentPreset = "blue" | "orange" | "purple" | "monochrome" | "custom"
 type DefaultEditorMode = "visual" | "source"
 
 interface UserPreferences {
@@ -879,6 +889,10 @@ interface UserPreferences {
     delayMs: 1000 | 3000 | 5000
   }
   theme: ThemePreference
+  accent: {
+    preset: AccentPreset
+    customHex: string
+  }
   defaultEditorMode: DefaultEditorMode
 }
 ```
@@ -935,6 +949,9 @@ interface UserPreferences {
 - 수동/자동 저장 모두 외부 수정 충돌 차단
 - 기본 편집 모드가 다음에 여는 문서부터 적용
 - 시스템 테마 변경 감지와 Listener 정리
+- 키 컬러 Preset 및 Custom HEX Validation
+- Custom 키 컬러 저장 후 재실행 시 복원
+- 키 컬러별 Button 전경색 대비 결정
 
 ### E2E / Manual Browser Test
 
@@ -944,20 +961,21 @@ interface UserPreferences {
 - 미저장 상태에서 문서 이동 시 저장, 폐기, 취소 흐름 확인
 - 새로고침 후 설정 유지
 - 라이트/다크 테마에서 주요 화면의 가독성과 Focus 상태 확인
+- 각 Theme와 키 컬러 조합에서 Button, Toggle, 선택 상태 확인
 - Desktop과 좁은 화면 모두에서 설정 접근 가능
 
 ## 제외 범위
 
 - Workspace별 설정
 - 기기 간 설정 동기화
-- 사용자 정의 색상 Theme
+- 배경과 본문까지 변경하는 완전한 사용자 정의 Theme
 - 자동 저장 간격의 임의 숫자 입력
 - 여러 문서 Draft의 장기 복구
 
 ## 완료 조건
 
 - 사용자가 자동 저장을 끄고 명시적으로 저장하며 편집할 수 있다.
-- 자동 저장 간격, Theme, 기본 편집 모드가 재실행 후에도 유지된다.
+- 자동 저장 간격, Theme, 키 컬러, 기본 편집 모드가 재실행 후에도 유지된다.
 - 미저장 변경이 사용자 확인 없이 사라지지 않는다.
 - 설정 변경이 Markdown 및 `.workspace/` 파일을 불필요하게 수정하지 않는다.
 - 모든 저장 경로에서 외부 변경 충돌과 쓰기 실패를 안전하게 처리한다.
