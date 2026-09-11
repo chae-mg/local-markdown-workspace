@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
 
+const prototypePath = `${process.env.GITHUB_ACTIONS ? '/local-markdown-workspace' : ''}/prototypes/notion-shell-v1/index.html`
+
 test.describe('Notion-style UI prototype', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/prototypes/notion-shell-v1/index.html')
+    await page.goto(prototypePath)
   })
 
   test('switches between the document and database shells', async ({
