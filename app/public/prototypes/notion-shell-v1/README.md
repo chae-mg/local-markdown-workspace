@@ -2,6 +2,23 @@
 
 실제 앱에 디자인을 적용하기 전에 화면 구조와 사용 흐름을 검토하기 위한 독립 프로토타입이다.
 
+## 확정 상태
+
+**2026-09-11 UI Foundation V1 확정**
+
+이 프로토타입을 실제 앱 UI의 기준으로 사용한다. 후속 기능은 아래의 확정된 큰 틀 안에 추가하고, 전체 화면 골격을 바꿔야 할 때만 새 Prototype을 만든다.
+
+확정된 기준:
+
+- 252px Desktop Sidebar와 Mobile Drawer
+- 간결한 Top Bar와 문서 중심 Content Canvas
+- 문서와 Database를 Sidebar에서 전환하는 Navigation
+- Sidebar 하단의 Settings 진입점
+- Light / Dark / System Theme
+- Preset 및 Custom Key Color
+- Notion Default / Pretendard / Serif / Mono 문서 글꼴
+- Server 기능으로 오해할 수 있는 공유 및 공동 편집 Action 제외
+
 ## 확인할 내용
 
 - 252px Sidebar의 정보 밀도와 문서 트리 구조

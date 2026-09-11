@@ -823,6 +823,8 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 현재 앱에 바로 Style을 적용하지 않고 `app/public/prototypes/` 아래에 독립된 클릭형 UI Prototype을 먼저 만든다.
 
+상태: **2026-09-11 UI Foundation V1 확정**
+
 Prototype에서 다음 구조를 검토한다.
 
 - Sidebar 정보 밀도와 문서 Tree
@@ -833,6 +835,8 @@ Prototype에서 다음 구조를 검토한다.
 - 좁은 화면의 Sidebar Drawer
 
 Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용자 검토로 Layout, Navigation, Design Token 방향을 확정한 뒤 공통 Component와 실제 화면에 단계적으로 반영한다.
+
+확정 이후에는 Sidebar, Top Bar, Content Canvas, Settings Dialog의 큰 Layout을 유지한다. Table, Kanban, Search 등 후속 기능은 확정된 구조 안에 추가하며, 전체 Navigation이나 화면 골격을 바꿔야 하는 경우에만 별도 Prototype 검토를 다시 진행한다.
 
 ## 설정 진입점
 
