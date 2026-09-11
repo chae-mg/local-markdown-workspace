@@ -819,6 +819,21 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 이 Phase는 Table View에 들어가기 전에 공통 설정 기반을 먼저 마련한다. 설정 변경은 문서나 Database Item의 내용을 수정하지 않아야 한다.
 
+## 선행 작업 — UI Foundation Prototype
+
+현재 앱에 바로 Style을 적용하지 않고 `app/public/prototypes/` 아래에 독립된 클릭형 UI Prototype을 먼저 만든다.
+
+Prototype에서 다음 구조를 검토한다.
+
+- Sidebar 정보 밀도와 문서 Tree
+- 문서 중심 Editor Canvas와 Top Bar
+- 문서와 Database 사이의 탐색 흐름
+- 설정 진입점과 Dialog 구조
+- Light / Dark Theme 방향
+- 좁은 화면의 Sidebar Drawer
+
+Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용자 검토로 Layout, Navigation, Design Token 방향을 확정한 뒤 공통 Component와 실제 화면에 단계적으로 반영한다.
+
 ## 설정 진입점
 
 - Desktop Sidebar 하단에 `설정` 버튼을 둔다.
@@ -896,13 +911,15 @@ interface UserPreferences {
 
 ## 구현 순서
 
-1. Preference Model, 기본값, Validation, 영속화 Store를 구현한다.
-2. 설정 진입점과 설정 화면을 추가한다.
-3. 기존 1초 고정 자동 저장을 Preference 기반 동작으로 교체한다.
-4. 수동 저장 단축키와 미저장 이동 보호를 연결한다.
-5. Theme 적용과 시스템 테마 변경 감지를 연결한다.
-6. 기본 편집 모드를 문서 Open 흐름에 연결한다.
-7. Unit, Integration, E2E, 실제 Chrome 시각 검증을 수행한다.
+1. 독립 UI Prototype을 만들고 Layout, Navigation, Theme 방향을 확정한다.
+2. 확정한 Design Token과 공통 UI 뼈대를 실제 앱에 반영한다.
+3. Preference Model, 기본값, Validation, 영속화 Store를 구현한다.
+4. 설정 진입점과 설정 화면을 추가한다.
+5. 기존 1초 고정 자동 저장을 Preference 기반 동작으로 교체한다.
+6. 수동 저장 단축키와 미저장 이동 보호를 연결한다.
+7. Theme 적용과 시스템 테마 변경 감지를 연결한다.
+8. 기본 편집 모드를 문서 Open 흐름에 연결한다.
+9. Unit, Integration, E2E, 실제 Chrome 시각 검증을 수행한다.
 
 ## Test
 

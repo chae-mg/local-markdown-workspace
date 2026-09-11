@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Local Markdown Workspace의 Notion 스타일 UI 구조 검토용 프로토타입"
+    />
+    <title>Local Markdown UI Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="prototype-banner">
+      <span>UI PROTOTYPE · V1</span>
+      <p>구조와 사용 흐름을 확인하는 시안입니다. 파일은 변경되지 않습니다.</p>
+      <button id="close-banner" type="button" aria-label="안내 닫기">×</button>
+    </div>
+
+    <div class="app-shell" id="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="workspace-switcher">
+          <div class="workspace-mark">L</div>
+          <div class="workspace-copy">
+            <strong>Local Markdown</strong>
+            <span>개인 워크스페이스</span>
+          </div>
+          <button
+            class="icon-button subtle"
+            type="button"
+            aria-label="워크스페이스 메뉴"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </button>
+        </div>
+
+        <nav class="primary-nav" aria-label="주요 메뉴">
+          <button class="nav-row" data-action="search" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-4-4" />
+            </svg>
+            <span>검색</span>
+            <kbd>⌘ K</kbd>
+          </button>
+          <button class="nav-row" data-view="document" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5z"
+              />
+              <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20" />
+            </svg>
+            <span>모든 문서</span>
+          </button>
+          <button class="nav-row" data-view="database" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M3 9h18M9 9v11" />
+            </svg>
+            <span>데이터베이스</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>개인 문서</span>
+            <button class="icon-button tiny" type="button" aria-label="새 문서">
+              +
+            </button>
+          </div>
+          <div class="tree-list">
+            <button class="tree-row active" data-view="document" type="button">
+              <span class="tree-caret">⌄</span>
+              <span class="page-icon">📘</span>
+              <span>제품 로드맵</span>
+            </button>
+            <button
+              class="tree-row nested"
+              data-action="placeholder"
+              type="button"
+            >
+              <span class="page-icon">📄</span>
+              <span>아이디어 메모</span>
+            </button>
+            <button class="tree-row" data-action="placeholder" type="button">
+              <span class="tree-caret muted">›</span>
+              <span class="page-icon">📝</span>
+              <span>회의 노트</span>
+            </button>
+            <button class="tree-row" data-action="placeholder" type="button">
+              <span class="tree-caret muted">›</span>
+              <span class="page-icon">📚</span>
+              <span>자료 모음</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>데이터베이스</span>
+            <button
+              class="icon-button tiny"
+              type="button"
+              aria-label="새 데이터베이스"
+            >
+              +
+            </button>
+          </div>
+          <div class="tree-list">
+            <button class="tree-row" data-view="database" type="button">
+              <span class="page-icon">▦</span>
+              <span>프로젝트</span>
+            </button>
+            <button class="tree-row" data-action="placeholder" type="button">
+              <span class="page-icon">▦</span>
+              <span>콘텐츠 캘린더</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="sync-state">
+            <span class="status-dot"></span>
+            <div>
+              <strong>내 폴더와 연결됨</strong>
+              <span>방금 저장됨</span>
+            </div>
+          </div>
+          <button class="nav-row" id="open-settings" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15.05 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06A1.7 1.7 0 0 0 19.4 9c.12.58.57 1.03 1.15 1.03H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"
+              />
+            </svg>
+            <span>설정</span>
+          </button>
+        </div>
+      </aside>
+
+      <button
+        class="sidebar-scrim"
+        id="sidebar-scrim"
+        type="button"
+        aria-label="사이드바 닫기"
+      ></button>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button
+              class="icon-button"
+              id="toggle-sidebar"
+              type="button"
+              aria-label="사이드바 전환"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M9 4v16" />
+              </svg>
+            </button>
+            <div class="breadcrumbs" id="breadcrumbs">
+              <span>개인 문서</span>
+              <b>/</b>
+              <strong>제품 로드맵</strong>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span class="save-state"
+              ><span class="status-dot"></span> 저장됨</span
+            >
+            <button class="text-button" type="button">공유</button>
+            <button class="icon-button" type="button" aria-label="즐겨찾기">
+              ☆
+            </button>
+            <button class="icon-button" type="button" aria-label="더보기">
+              •••
+            </button>
+          </div>
+        </header>
+
+        <section class="view active" id="document-view" aria-label="문서 화면">
+          <article class="document-canvas">
+            <button
+              class="page-emoji"
+              type="button"
+              aria-label="페이지 아이콘 변경"
+            >
+              📘
+            </button>
+            <h1 contenteditable="true" spellcheck="false">제품 로드맵</h1>
+            <div class="page-properties">
+              <button type="button">
+                <span>상태</span><b class="tag green">진행 중</b>
+              </button>
+              <button type="button"><span>담당</span><b>채민규</b></button>
+              <button type="button"><span>수정</span><b>오늘</b></button>
+              <button class="add-property" type="button">+ 속성 추가</button>
+            </div>
+
+            <div class="callout">
+              <span>💡</span>
+              <p>
+                로컬 Markdown 파일을 중심으로 편안한 문서 경험과 데이터베이스
+                기능을 함께 만듭니다.
+              </p>
+            </div>
+
+            <div
+              class="document-content"
+              contenteditable="true"
+              spellcheck="false"
+            >
+              <h2>이번 단계의 목표</h2>
+              <p>
+                복잡한 기능을 더하기 전에 전체 화면의 구조와 사용 흐름을 먼저
+                확정합니다.
+              </p>
+              <ul>
+                <li>문서에 집중할 수 있는 넓고 조용한 편집 영역</li>
+                <li>필요할 때만 드러나는 도구와 상태 정보</li>
+                <li>문서와 데이터베이스를 오가는 일관된 탐색 경험</li>
+              </ul>
+              <h2>다음 작업</h2>
+              <div class="task-list">
+                <label
+                  ><input type="checkbox" checked /> UI 구조 시안 확인</label
+                >
+                <label><input type="checkbox" /> 설정 화면 구현</label>
+                <label><input type="checkbox" /> Table View 구현</label>
+              </div>
+              <p class="empty-line">
+                내용을 입력하거나 <kbd>/</kbd>를 눌러 블록을 추가하세요.
+              </p>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" id="database-view" aria-label="데이터베이스 화면">
+          <div class="database-canvas">
+            <div class="database-title-row">
+              <div>
+                <span class="database-icon">▦</span>
+                <h1>프로젝트</h1>
+                <p>진행 중인 작업을 한곳에서 관리합니다.</p>
+              </div>
+              <button class="primary-button" type="button">새 항목</button>
+            </div>
+            <div class="database-toolbar">
+              <div class="view-tabs">
+                <button class="active" type="button">▦ 표</button>
+                <button type="button">▤ 보드</button>
+                <button class="add-view" type="button">+</button>
+              </div>
+              <div class="toolbar-actions">
+                <button type="button">필터</button>
+                <button type="button">정렬</button>
+                <button type="button">속성</button>
+                <button type="button">⌕</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="check-column">
+                      <input type="checkbox" aria-label="모두 선택" />
+                    </th>
+                    <th>제목</th>
+                    <th>상태</th>
+                    <th>우선순위</th>
+                    <th>마감일</th>
+                    <th class="add-column">＋</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="checkbox" aria-label="행 선택" /></td>
+                    <td><span class="row-page">📄</span> 환경설정 화면</td>
+                    <td><span class="tag green">진행 중</span></td>
+                    <td><span class="tag red">높음</span></td>
+                    <td>9월 14일</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" aria-label="행 선택" /></td>
+                    <td><span class="row-page">📄</span> Table View</td>
+                    <td><span class="tag gray">예정</span></td>
+                    <td><span class="tag yellow">보통</span></td>
+                    <td>9월 20일</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" aria-label="행 선택" /></td>
+                    <td><span class="row-page">📄</span> Kanban View</td>
+                    <td><span class="tag gray">예정</span></td>
+                    <td><span class="tag yellow">보통</span></td>
+                    <td>9월 27일</td>
+                    <td></td>
+                  </tr>
+                  <tr class="new-row">
+                    <td></td>
+                    <td colspan="5">＋ 새 항목</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="dialog-backdrop" id="settings-dialog" hidden>
+      <section
+        class="settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <header>
+          <div>
+            <span>환경설정</span>
+            <h2 id="settings-title">나에게 맞게 조정하기</h2>
+          </div>
+          <button
+            class="icon-button"
+            id="close-settings"
+            type="button"
+            aria-label="설정 닫기"
+          >
+            ×
+          </button>
+        </header>
+        <div class="settings-body">
+          <nav class="settings-nav" aria-label="설정 분류">
+            <button class="active" type="button">일반</button>
+            <button type="button">편집</button>
+            <button type="button">정보</button>
+          </nav>
+          <div class="settings-content">
+            <div class="setting-row">
+              <div>
+                <strong>자동 저장</strong>
+                <p>입력을 멈추면 선택한 시간 뒤에 저장합니다.</p>
+              </div>
+              <label class="switch">
+                <input
+                  id="autosave-toggle"
+                  type="checkbox"
+                  aria-label="자동 저장 사용"
+                  checked
+                />
+                <span></span>
+              </label>
+            </div>
+            <div class="setting-row" id="autosave-delay-row">
+              <div>
+                <strong>자동 저장 간격</strong>
+                <p>작성 흐름에 맞는 대기 시간을 선택하세요.</p>
+              </div>
+              <select aria-label="자동 저장 간격">
+                <option>1초</option>
+                <option selected>3초</option>
+                <option>5초</option>
+              </select>
+            </div>
+            <div class="setting-block">
+              <div>
+                <strong>테마</strong>
+                <p>현재 기기에서 사용할 화면 모드를 선택합니다.</p>
+              </div>
+              <div class="theme-options" role="radiogroup" aria-label="테마">
+                <button class="active" data-theme-choice="light" type="button">
+                  <span class="theme-preview light-preview"><i></i></span>
+                  <b>라이트</b>
+                </button>
+                <button data-theme-choice="dark" type="button">
+                  <span class="theme-preview dark-preview"><i></i></span>
+                  <b>다크</b>
+                </button>
+                <button data-theme-choice="system" type="button">
+                  <span class="theme-preview system-preview"><i></i></span>
+                  <b>시스템</b>
+                </button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <strong>기본 편집 모드</strong>
+                <p>새 문서를 열 때 사용할 화면입니다.</p>
+              </div>
+              <select aria-label="기본 편집 모드">
+                <option>에디터</option>
+                <option>Markdown</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./prototype.js"></script>
+  </body>
+</html>
