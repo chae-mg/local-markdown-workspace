@@ -20,6 +20,7 @@
 - Light / Dark / System Theme 전환
 - Blue / Orange / Purple / Monochrome Key Color 전환
 - Color Picker 또는 HEX 입력으로 Custom Key Color 저장 및 복원
+- Notion Default / Pretendard / Serif / Mono 문서 글꼴 전환 및 복원
 
 Notion처럼 Server와 Account가 필요한 공유 및 공동 편집 Action은 표시하지 않는다. 즐겨찾기는 향후 Local Metadata 저장 정책을 정한 뒤 별도 범위로 검토한다.
 

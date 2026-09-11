@@ -869,6 +869,16 @@ Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용
 - `커스텀`은 Color Picker와 6자리 HEX 입력을 제공하고 유효한 값만 저장한다.
 - 선택 색상의 밝기에 따라 Button 글자색을 검정 또는 흰색으로 자동 결정해 대비를 유지한다.
 
+### 문서 글꼴
+
+- 1차로 `Notion 기본`, `Pretendard`, `명조`, `고정폭`을 제공한다.
+- 초기값은 운영체제의 UI Font를 우선하는 `Notion 기본`이다.
+- Sidebar, Menu, Dialog 등 앱 UI Font는 일관성과 가독성을 위해 고정하고 Editor와 Database Content에만 선택한 글꼴을 적용한다.
+- `Pretendard`는 앱에 포함한 Web Font로 운영체제와 관계없이 일관되게 표시한다.
+- `Notion 기본`, `명조`, `고정폭`은 운영체제 Font Stack을 사용하므로 기기별 실제 글꼴은 달라질 수 있다.
+- 선택한 글꼴은 현재 브라우저에 저장하고 다시 열 때 복원한다.
+- 사용자 Font File 추가는 라이선스, 파일 크기, 지원 형식, IndexedDB 저장 정책을 별도로 정한 뒤 후속 범위로 확장한다.
+
 ### 기본 편집 모드
 
 - `에디터`와 `Markdown` 중 새로 여는 문서의 기본 모드를 선택한다.
@@ -880,6 +890,7 @@ Prototype은 실제 Workspace 파일을 읽거나 수정하지 않는다. 사용
 ```ts
 type ThemePreference = "system" | "light" | "dark"
 type AccentPreset = "blue" | "orange" | "purple" | "monochrome" | "custom"
+type DocumentFontPreference = "notion" | "pretendard" | "serif" | "mono"
 type DefaultEditorMode = "visual" | "source"
 
 interface UserPreferences {
@@ -893,6 +904,7 @@ interface UserPreferences {
     preset: AccentPreset
     customHex: string
   }
+  documentFont: DocumentFontPreference
   defaultEditorMode: DefaultEditorMode
 }
 ```
@@ -952,6 +964,8 @@ interface UserPreferences {
 - 키 컬러 Preset 및 Custom HEX Validation
 - Custom 키 컬러 저장 후 재실행 시 복원
 - 키 컬러별 Button 전경색 대비 결정
+- 문서 글꼴 변경 시 Editor와 Database Content에만 적용
+- 저장한 문서 글꼴 재실행 시 복원
 
 ### E2E / Manual Browser Test
 
@@ -962,6 +976,7 @@ interface UserPreferences {
 - 새로고침 후 설정 유지
 - 라이트/다크 테마에서 주요 화면의 가독성과 Focus 상태 확인
 - 각 Theme와 키 컬러 조합에서 Button, Toggle, 선택 상태 확인
+- 각 문서 글꼴에서 한글, 영문, 숫자, Markdown Code 표시 확인
 - Desktop과 좁은 화면 모두에서 설정 접근 가능
 
 ## 제외 범위
@@ -969,13 +984,14 @@ interface UserPreferences {
 - Workspace별 설정
 - 기기 간 설정 동기화
 - 배경과 본문까지 변경하는 완전한 사용자 정의 Theme
+- 사용자 Font File 업로드 및 외부 Font URL 입력
 - 자동 저장 간격의 임의 숫자 입력
 - 여러 문서 Draft의 장기 복구
 
 ## 완료 조건
 
 - 사용자가 자동 저장을 끄고 명시적으로 저장하며 편집할 수 있다.
-- 자동 저장 간격, Theme, 키 컬러, 기본 편집 모드가 재실행 후에도 유지된다.
+- 자동 저장 간격, Theme, 키 컬러, 문서 글꼴, 기본 편집 모드가 재실행 후에도 유지된다.
 - 미저장 변경이 사용자 확인 없이 사라지지 않는다.
 - 설정 변경이 Markdown 및 `.workspace/` 파일을 불필요하게 수정하지 않는다.
 - 모든 저장 경로에서 외부 변경 충돌과 쓰기 실패를 안전하게 처리한다.

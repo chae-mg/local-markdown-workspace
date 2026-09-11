@@ -19,10 +19,20 @@ const accentPresets = {
   purple: '#9065B0',
 }
 
+const fontPresets = {
+  notion:
+    "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif",
+  pretendard:
+    "'Pretendard Variable', Pretendard, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  serif: "ui-serif, Georgia, 'Noto Serif KR', 'AppleMyungjo', Batang, serif",
+  mono: "ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', D2Coding, monospace",
+}
+
 const defaultPreferences = {
   theme: 'system',
   accent: 'blue',
   customAccent: '#2F80ED',
+  font: 'notion',
 }
 
 let preferences = readPreferences()
@@ -46,8 +56,11 @@ function readPreferences() {
     const customAccent = isHexColor(stored?.customAccent)
       ? stored.customAccent.toUpperCase()
       : defaultPreferences.customAccent
+    const font = Object.hasOwn(fontPresets, stored?.font)
+      ? stored.font
+      : defaultPreferences.font
 
-    return { theme, accent, customAccent }
+    return { theme, accent, customAccent, font }
   } catch {
     return { ...defaultPreferences }
   }
@@ -123,6 +136,21 @@ function applyThemeChoice(theme, persist = true) {
 
   applyAccentChoice(preferences.accent, { persist: false })
   if (persist) persistPreferences({ theme })
+}
+
+function applyFontChoice(font, persist = true) {
+  const resolvedFont = Object.hasOwn(fontPresets, font)
+    ? font
+    : defaultPreferences.font
+
+  root.style.setProperty('--content-font', fontPresets[resolvedFont])
+  document.querySelectorAll('[data-font-choice]').forEach((button) => {
+    const isActive = button.dataset.fontChoice === resolvedFont
+    button.classList.toggle('active', isActive)
+    button.setAttribute('aria-pressed', String(isActive))
+  })
+
+  if (persist) persistPreferences({ font: resolvedFont })
 }
 
 function showToast(message) {
@@ -239,6 +267,12 @@ document.querySelectorAll('[data-accent-choice]').forEach((button) => {
   })
 })
 
+document.querySelectorAll('[data-font-choice]').forEach((button) => {
+  button.addEventListener('click', () => {
+    applyFontChoice(button.dataset.fontChoice)
+  })
+})
+
 customAccentPicker.addEventListener('input', () => {
   const value = customAccentPicker.value.toUpperCase()
   customAccentHex.value = value
@@ -274,4 +308,5 @@ applyAccentChoice(preferences.accent, {
   customAccent: preferences.customAccent,
   persist: false,
 })
+applyFontChoice(preferences.font, false)
 setSidebarInitialState()

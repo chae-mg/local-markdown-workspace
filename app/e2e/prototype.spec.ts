@@ -72,6 +72,25 @@ test.describe('Notion-style UI prototype', () => {
     )
   })
 
+  test('changes and restores the document font', async ({ page }) => {
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('button', { name: '명조' }).click()
+
+    const contentFont = await page
+      .locator('html')
+      .evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--content-font').trim(),
+      )
+    expect(contentFont).toContain('Noto Serif KR')
+
+    await page.reload()
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await expect(page.getByRole('button', { name: '명조' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
   test('uses a drawer sidebar on a narrow screen', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.reload()
