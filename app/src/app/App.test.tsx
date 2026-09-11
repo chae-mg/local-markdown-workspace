@@ -28,7 +28,7 @@ describe('App', () => {
     })
   })
 
-  it('renders the Phase 8 workspace entry screen', async () => {
+  it('renders the UI Foundation workspace entry screen', async () => {
     render(
       <MemoryRouter>
         <App />
@@ -41,7 +41,14 @@ describe('App', () => {
     expect(
       await screen.findByRole('button', { name: '워크스페이스 열기' }),
     ).toBeEnabled()
-    expect(screen.getByText('Phase 8 · Schema Engine')).toBeInTheDocument()
+    expect(
+      screen.getByRole('complementary', {
+        name: '워크스페이스 사이드바',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '사이드바 전환' }),
+    ).toBeInTheDocument()
   })
 
   it('asks before initializing a folder that already contains files', () => {

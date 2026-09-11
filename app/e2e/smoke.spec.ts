@@ -9,7 +9,30 @@ test('shows the initial workspace entry screen', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: '워크스페이스 열기' }),
   ).toBeEnabled()
-  await expect(page.getByText('Phase 8 · Schema Engine')).toBeVisible()
+  await expect(
+    page.getByRole('complementary', { name: '워크스페이스 사이드바' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '사이드바 전환' }),
+  ).toBeVisible()
+})
+
+test('opens the workspace sidebar as a drawer on a narrow screen', async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/#/')
+
+  const sidebar = page.getByRole('complementary', {
+    name: '워크스페이스 사이드바',
+  })
+  const hiddenPosition = await sidebar.boundingBox()
+  expect(hiddenPosition?.x).toBeLessThan(0)
+
+  await page.getByRole('button', { name: '사이드바 전환' }).click()
+
+  await expect(sidebar).toBeInViewport()
+  await expect(sidebar).toHaveCSS('width', '252px')
 })
 
 test('uses a real directory handle for the complete workspace flow', async ({

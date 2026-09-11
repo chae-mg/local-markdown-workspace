@@ -1,14 +1,16 @@
 import {
+  BookOpenText,
   Database,
   FileText,
   FolderCheck,
   FolderOpen,
   HardDrive,
   LoaderCircle,
+  PanelLeft,
   RefreshCw,
-  Search,
   ShieldCheck,
   TriangleAlert,
+  X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
@@ -24,7 +26,6 @@ import { useWorkspaceStore } from '@/stores/workspace.store'
 const navigationItems = [
   { id: 'documents', label: '문서', icon: FileText },
   { id: 'databases', label: '데이터베이스', icon: Database },
-  { id: 'search', label: '검색', icon: Search },
 ] as const
 
 type NavigationSection = 'documents' | 'databases'
@@ -32,6 +33,9 @@ type NavigationSection = 'documents' | 'databases'
 function WelcomePage() {
   const [activeSection, setActiveSection] =
     useState<NavigationSection>('documents')
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
+    useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const {
     clearMutationError,
     createFolder,
@@ -123,6 +127,7 @@ function WelcomePage() {
     if (path === selectedPath || (await saveBeforeNavigation())) {
       selectEntry(path)
       setActiveSection('documents')
+      setIsMobileSidebarOpen(false)
     }
   }
 
@@ -130,18 +135,21 @@ function WelcomePage() {
     if (await saveBeforeNavigation()) {
       selectDirectory(path)
       setActiveSection('documents')
+      setIsMobileSidebarOpen(false)
     }
   }
 
   const handleNavigation = async (
     section: (typeof navigationItems)[number]['id'],
   ) => {
-    if (section === 'search' || section === activeSection) {
+    if (section === activeSection) {
+      setIsMobileSidebarOpen(false)
       return
     }
 
     if (await saveBeforeNavigation()) {
       setActiveSection(section)
+      setIsMobileSidebarOpen(false)
     }
   }
 
@@ -149,6 +157,7 @@ function WelcomePage() {
     await refreshWorkspace()
     selectEntry(path)
     setActiveSection('documents')
+    setIsMobileSidebarOpen(false)
   }
 
   const handleDatabaseWorkspaceChanged = async () => {
@@ -176,42 +185,88 @@ function WelcomePage() {
   const handleRestoreTrashEntry = async (id: string, name: string) =>
     (await saveBeforeNavigation()) && restoreTrashEntry(id, name)
 
+  const handleSidebarToggle = () => {
+    if (window.matchMedia?.('(min-width: 768px)').matches) {
+      setIsDesktopSidebarCollapsed((current) => !current)
+      return
+    }
+
+    setIsMobileSidebarOpen((current) => !current)
+  }
+
+  const currentPageLabel =
+    activeSection === 'databases'
+      ? '데이터베이스'
+      : (selectedPath?.split('/').at(-1) ?? workspace?.name ?? '시작하기')
+
+  const workspaceStatusLabel = workspace
+    ? `${workspace.name} · ${
+        isReady ? '연결됨' : needsInitialization ? '초기화 필요' : '권한 필요'
+      }`
+    : '연결된 워크스페이스 없음'
+
   return (
-    <div className="min-h-screen bg-stone-100 p-3 text-stone-950 sm:p-5">
-      <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[calc(100vh-2.5rem)]">
-        <aside className="hidden min-h-0 w-64 shrink-0 border-r border-stone-200 bg-stone-50/80 p-5 md:flex md:flex-col">
-          <div className="flex items-center gap-3 px-1">
-            <div className="grid size-9 place-items-center rounded-xl bg-stone-950 text-sm font-semibold tracking-tight text-white">
-              LM
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-tight">
-                Local Markdown
-              </p>
-              <p className="text-xs text-stone-500">내 폴더가 원본입니다</p>
-            </div>
+    <div className="app-shell flex h-dvh min-h-[36rem] overflow-hidden bg-[var(--ui-surface)] text-[var(--ui-text)]">
+      {isMobileSidebarOpen ? (
+        <button
+          aria-label="사이드바 바깥 영역 닫기"
+          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          type="button"
+        />
+      ) : null}
+
+      <aside
+        aria-label="워크스페이스 사이드바"
+        className={`fixed inset-y-0 left-0 z-40 flex w-[252px] shrink-0 flex-col overflow-hidden border-r border-[var(--ui-border)] bg-[var(--ui-sidebar)] transition-[width,transform,border] duration-200 md:static md:z-auto md:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${
+          isDesktopSidebarCollapsed ? 'md:w-0 md:border-r-0' : 'md:w-[252px]'
+        }`}
+      >
+        <div className="flex h-[58px] w-[252px] shrink-0 items-center gap-2.5 px-2.5 pl-3">
+          <div className="grid size-[30px] shrink-0 place-items-center rounded-[7px] bg-[var(--ui-text)] font-serif text-base font-bold text-[var(--ui-surface)]">
+            L
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold tracking-tight">
+              {workspace?.name ?? 'Local Markdown'}
+            </p>
+            <p className="mt-px truncate text-[11px] text-[var(--ui-muted)]">
+              {workspace ? '개인 워크스페이스' : '내 폴더가 원본입니다'}
+            </p>
+          </div>
+          <button
+            aria-label="사이드바 닫기"
+            className="grid size-[30px] shrink-0 place-items-center rounded-md text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)] md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            type="button"
+          >
+            <X aria-hidden="true" className="size-4" />
+          </button>
+        </div>
 
-          <nav aria-label="주 탐색" className="mt-9 space-y-1">
-            {navigationItems.map(({ id, label, icon: Icon }) => (
-              <button
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  id === activeSection
-                    ? 'bg-white font-medium text-stone-950 shadow-sm ring-1 ring-stone-200'
-                    : 'text-stone-500 hover:bg-white hover:text-stone-800'
-                }`}
-                disabled={id === 'search'}
-                key={label}
-                onClick={() => void handleNavigation(id)}
-                title={id === 'search' ? 'Phase 12에서 제공됩니다' : undefined}
-                type="button"
-              >
-                <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
-                {label}
-              </button>
-            ))}
-          </nav>
+        <nav aria-label="주 탐색" className="w-[252px] px-2 pt-1 pb-2">
+          {navigationItems.map(({ id, label, icon: Icon }) => (
+            <button
+              aria-current={id === activeSection ? 'page' : undefined}
+              className={`flex h-[31px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors ${
+                id === activeSection
+                  ? 'bg-[var(--ui-hover)] font-medium text-[var(--ui-text)]'
+                  : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]'
+              } disabled:cursor-not-allowed disabled:opacity-45`}
+              disabled={!isReady}
+              key={label}
+              onClick={() => void handleNavigation(id)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
+              {label}
+            </button>
+          ))}
+        </nav>
 
+        <div className="flex min-h-0 w-[252px] flex-1 flex-col overflow-y-auto px-3 pb-2">
           {isReady && workspace ? (
             <>
               <WorkspaceTree
@@ -246,250 +301,195 @@ function WelcomePage() {
                 onRestore={handleRestoreTrashEntry}
               />
             </>
-          ) : null}
-
-          <div className="mt-auto rounded-2xl border border-stone-200 bg-white p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <ShieldCheck
-                aria-hidden="true"
-                className="size-4 text-emerald-700"
-              />
-              Local-first
-            </div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">
-              문서는 서버가 아닌 사용자가 선택한 로컬 폴더에 저장됩니다.
-            </p>
-          </div>
-        </aside>
-
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 items-center justify-between border-b border-stone-200 px-5 sm:px-8">
-            <div className="flex items-center gap-3 md:hidden">
-              <div className="grid size-8 place-items-center rounded-lg bg-stone-950 text-xs font-semibold text-white">
-                LM
-              </div>
-              <span className="text-sm font-semibold">Local Markdown</span>
-            </div>
-            <div className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
-              {isReady ? (
-                <FolderCheck
-                  aria-hidden="true"
-                  className="size-4 text-emerald-700"
-                />
-              ) : (
-                <HardDrive aria-hidden="true" className="size-4" />
-              )}
-              {workspace
-                ? `${workspace.name} · ${
-                    isReady
-                      ? '연결됨'
-                      : needsInitialization
-                        ? '초기화 필요'
-                        : '권한 필요'
-                  }`
-                : '연결된 워크스페이스 없음'}
-            </div>
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-              Phase 8 · Schema Engine
-            </span>
-          </header>
-
-          {isReady ? (
-            <nav
-              aria-label="모바일 주 탐색"
-              className="flex gap-1 border-b border-stone-200 bg-stone-50/80 p-2 md:hidden"
-            >
-              {navigationItems.map(({ id, label, icon: Icon }) => (
-                <button
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs transition-colors ${
-                    id === activeSection
-                      ? 'bg-white font-medium text-stone-950 shadow-sm ring-1 ring-stone-200'
-                      : 'text-stone-500'
-                  }`}
-                  disabled={id === 'search'}
-                  key={id}
-                  onClick={() => void handleNavigation(id)}
-                  type="button"
-                >
-                  <Icon aria-hidden="true" className="size-3.5" />
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : null}
-
-          {isReady && activeSection === 'databases' && workspace ? (
-            <DatabaseWorkspace
-              key={workspace.manifest?.id ?? workspace.name}
-              onOpenItem={handleOpenDatabaseItem}
-              onWorkspaceChanged={handleDatabaseWorkspaceChanged}
-            />
-          ) : isReady && selectedPath ? (
-            <DocumentEditor
-              key={selectedPath}
-              onClose={() => void handleDirectorySelect(selectedDirectoryPath)}
-              path={selectedPath}
-            />
           ) : (
-            <section className="grid flex-1 place-items-center px-5 py-12 sm:px-10">
-              <div className="w-full max-w-3xl">
-                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600">
-                  <span className="size-1.5 rounded-full bg-emerald-600" />
-                  설치 없이 Chrome에서 시작
-                </div>
-                <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.02em] text-balance sm:text-6xl">
-                  {needsInitialization ? (
-                    <>
-                      이 폴더를 Workspace로
-                      <br />
-                      준비할까요?
-                    </>
-                  ) : isReady ? (
-                    <>
-                      {workspace?.name} Workspace가
-                      <br />
-                      준비되었습니다.
-                    </>
-                  ) : (
-                    <>
-                      내 파일은 내 폴더에,
-                      <br />
-                      편집은 더 편안하게.
-                    </>
-                  )}
-                </h1>
-                <p className="mt-6 max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-                  {needsInitialization
-                    ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
-                    : isReady
-                      ? selectedPath
-                        ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
-                        : '왼쪽 파일 트리에서 문서와 폴더를 만들고, 선택한 항목의 이름을 바꾸거나 휴지통으로 이동할 수 있습니다. 기존 항목은 덮어쓰지 않습니다.'
-                      : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
-                </p>
-
-                {isReady && workspace ? (
-                  <div className="mt-8 md:hidden">
-                    <WorkspaceTree
-                      entries={entries}
-                      errorMessage={treeErrorMessage}
-                      isLoading={treeStatus === 'loading'}
-                      isMutating={mutationStatus !== 'idle'}
-                      key={`mobile-${workspace.manifest?.id ?? workspace.name}`}
-                      mutationErrorMessage={mutationErrorMessage}
-                      onClearMutationError={clearMutationError}
-                      onCreateFolder={handleCreateFolder}
-                      onCreateMarkdownFile={handleCreateMarkdownFile}
-                      onDirectorySelect={(path) =>
-                        void handleDirectorySelect(path)
-                      }
-                      onMoveEntry={handleMoveEntry}
-                      onMoveToTrash={handleMoveToTrash}
-                      onRefresh={() => void refreshWorkspace()}
-                      onRenameEntry={handleRenameEntry}
-                      onSelect={(path) => void handleEntrySelect(path)}
-                      selectedDirectoryPath={selectedDirectoryPath}
-                      selectedPath={selectedPath}
-                      workspaceName={workspace.name}
-                    />
-                    <WorkspaceTrash
-                      entries={trashEntries}
-                      errorMessage={trashErrorMessage}
-                      isLoading={trashStatus === 'loading'}
-                      isMutating={mutationStatus !== 'idle'}
-                      mutationErrorMessage={mutationErrorMessage}
-                      onClearMutationError={clearMutationError}
-                      onEmpty={emptyTrash}
-                      onRefresh={() => void refreshTrash()}
-                      onRestore={handleRestoreTrashEntry}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      disabled={isOpening || isUnsupported}
-                      onClick={() => void handleWorkspaceAction()}
-                      size="lg"
-                    >
-                      {isOpening ? (
-                        <LoaderCircle
-                          aria-hidden="true"
-                          className="size-4 animate-spin"
-                        />
-                      ) : needsPermission ? (
-                        <RefreshCw aria-hidden="true" className="size-4" />
-                      ) : (
-                        <FolderOpen aria-hidden="true" className="size-4" />
-                      )}
-                      {buttonLabel}
-                    </Button>
-                    {needsPermission || needsInitialization ? (
-                      <Button
-                        onClick={() => void openWorkspace()}
-                        size="lg"
-                        variant="outline"
-                      >
-                        다른 폴더 선택
-                      </Button>
-                    ) : null}
-                  </div>
-                  <p className="text-xs leading-5 text-stone-500">
-                    {isUnsupported
-                      ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
-                      : needsInitialization
-                        ? '초기화 전에는 기존 파일을 수정하거나 이동하지 않습니다.'
-                        : needsPermission
-                          ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
-                          : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
-                  </p>
-                </div>
-
-                {errorMessage ? (
-                  <div
-                    className="mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-                    role="alert"
-                  >
-                    <TriangleAlert
-                      aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0"
-                    />
-                    <span>{errorMessage}</span>
-                  </div>
-                ) : null}
-
-                <dl className="mt-14 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
-                  <div>
-                    <dt className="text-xs font-medium text-stone-500">
-                      저장 위치
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold">
-                      Local File System
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium text-stone-500">
-                      원본 형식
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold">
-                      표준 Markdown
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium text-stone-500">
-                      지원 환경
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold">
-                      Chrome · Windows · macOS
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </section>
+            <div className="mt-3 rounded-md px-2 py-3 text-xs leading-5 text-[var(--ui-muted)]">
+              폴더를 연결하면 문서와 데이터베이스가 여기에 표시됩니다.
+            </div>
           )}
-        </main>
-      </div>
+        </div>
+
+        <div className="w-[252px] shrink-0 border-t border-[var(--ui-border)] p-2">
+          <div className="flex items-center gap-2 rounded-md px-2 py-2 text-xs text-[var(--ui-muted)]">
+            <ShieldCheck
+              aria-hidden="true"
+              className={`size-4 ${isReady ? 'text-emerald-600' : ''}`}
+            />
+            <span className="min-w-0 truncate">{workspaceStatusLabel}</span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="flex min-w-0 flex-1 flex-col bg-[var(--ui-surface)]">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--ui-border)] px-2 sm:px-3">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <button
+              aria-label="사이드바 전환"
+              className="grid size-8 shrink-0 place-items-center rounded-md text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]"
+              onClick={handleSidebarToggle}
+              type="button"
+            >
+              <PanelLeft aria-hidden="true" className="size-[18px]" />
+            </button>
+            <div className="flex min-w-0 items-center gap-1.5 px-1 text-[13px]">
+              <span className="hidden truncate text-[var(--ui-muted)] sm:inline">
+                {activeSection === 'databases' ? '데이터베이스' : '문서'}
+              </span>
+              <span
+                aria-hidden="true"
+                className="hidden text-[var(--ui-faint)] sm:inline"
+              >
+                /
+              </span>
+              <strong className="truncate font-medium">
+                {currentPageLabel}
+              </strong>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 px-1 text-xs text-[var(--ui-muted)]">
+            {isReady ? (
+              <FolderCheck
+                aria-hidden="true"
+                className="size-3.5 text-emerald-600"
+              />
+            ) : (
+              <HardDrive aria-hidden="true" className="size-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {isReady ? '내 폴더와 연결됨' : '로컬 폴더 연결 대기'}
+            </span>
+          </div>
+        </header>
+
+        {isReady && activeSection === 'databases' && workspace ? (
+          <DatabaseWorkspace
+            key={workspace.manifest?.id ?? workspace.name}
+            onOpenItem={handleOpenDatabaseItem}
+            onWorkspaceChanged={handleDatabaseWorkspaceChanged}
+          />
+        ) : isReady && selectedPath ? (
+          <DocumentEditor
+            key={selectedPath}
+            onClose={() => void handleDirectorySelect(selectedDirectoryPath)}
+            path={selectedPath}
+          />
+        ) : (
+          <section className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-[760px] px-7 pt-16 pb-20 sm:px-12 sm:pt-24">
+              <div className="mb-5 grid size-12 place-items-center rounded-xl bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">
+                <BookOpenText aria-hidden="true" className="size-6" />
+              </div>
+              <h1 className="max-w-2xl text-4xl font-bold tracking-[-0.035em] text-balance sm:text-5xl">
+                {needsInitialization ? (
+                  <>
+                    이 폴더를 Workspace로
+                    <br />
+                    준비할까요?
+                  </>
+                ) : isReady ? (
+                  <>
+                    {workspace?.name} Workspace가
+                    <br />
+                    준비되었습니다.
+                  </>
+                ) : (
+                  <>
+                    내 파일은 내 폴더에,
+                    <br />
+                    편집은 더 편안하게.
+                  </>
+                )}
+              </h1>
+              <p className="mt-5 max-w-xl text-[15px] leading-7 text-[var(--ui-muted)] sm:text-base">
+                {needsInitialization
+                  ? '기존 파일은 그대로 두고 Documents, Databases, Attachments와 앱 Metadata 폴더만 추가합니다.'
+                  : isReady
+                    ? selectedPath
+                      ? `${selectedPath} 문서를 선택했습니다. 다음 Editor 단계에서 이 파일을 열고 편집할 수 있게 됩니다.`
+                      : '왼쪽 파일 트리에서 문서와 폴더를 만들고, 선택한 항목의 이름을 바꾸거나 휴지통으로 이동할 수 있습니다. 기존 항목은 덮어쓰지 않습니다.'
+                    : 'Markdown을 원본 그대로 유지하면서 문서와 데이터베이스를 한곳에서 관리하세요. 앱이 없어져도 파일은 언제나 사용자의 것입니다.'}
+              </p>
+
+              <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={isOpening || isUnsupported}
+                    onClick={() => void handleWorkspaceAction()}
+                    size="lg"
+                  >
+                    {isOpening ? (
+                      <LoaderCircle
+                        aria-hidden="true"
+                        className="size-4 animate-spin"
+                      />
+                    ) : needsPermission ? (
+                      <RefreshCw aria-hidden="true" className="size-4" />
+                    ) : (
+                      <FolderOpen aria-hidden="true" className="size-4" />
+                    )}
+                    {buttonLabel}
+                  </Button>
+                  {needsPermission || needsInitialization ? (
+                    <Button
+                      onClick={() => void openWorkspace()}
+                      size="lg"
+                      variant="outline"
+                    >
+                      다른 폴더 선택
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-xs leading-5 text-[var(--ui-muted)]">
+                  {isUnsupported
+                    ? 'HTTPS 또는 localhost의 최신 Chrome에서 열어주세요.'
+                    : needsInitialization
+                      ? '초기화 전에는 기존 파일을 수정하거나 이동하지 않습니다.'
+                      : needsPermission
+                        ? '최근 폴더를 기억하고 있지만 Chrome 권한이 필요합니다.'
+                        : '선택한 폴더의 핸들은 이 브라우저에만 저장됩니다.'}
+                </p>
+              </div>
+
+              {errorMessage ? (
+                <div
+                  className="mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <span>{errorMessage}</span>
+                </div>
+              ) : null}
+
+              <dl className="mt-14 grid gap-5 border-t border-[var(--ui-border)] pt-6 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-medium text-[var(--ui-muted)]">
+                    저장 위치
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">
+                    Local File System
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-[var(--ui-muted)]">
+                    원본 형식
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">표준 Markdown</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-[var(--ui-muted)]">
+                    지원 환경
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold">
+                    Chrome · Windows · macOS
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   )
 }

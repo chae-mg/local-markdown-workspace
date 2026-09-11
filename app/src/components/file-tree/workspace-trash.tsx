@@ -102,11 +102,11 @@ export function WorkspaceTrash({
   }
 
   return (
-    <section className="mt-4 border-t border-stone-200 pt-4">
+    <section className="mt-2 border-t border-[var(--ui-border)] pt-2">
       <div className="flex items-center gap-1">
         <button
           aria-expanded={isExpanded}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-medium text-stone-700 hover:bg-stone-100"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-left text-xs font-medium text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]"
           onClick={() => setIsExpanded((current) => !current)}
           type="button"
         >

@@ -825,6 +825,13 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 상태: **2026-09-11 UI Foundation V1 확정**
 
+실제 앱 반영 상태: **2026-09-11 1차 이관 시작**
+
+- 공통 Design Token과 252px Sidebar, 48px Top Bar를 실제 앱에 연결한다.
+- Desktop Sidebar 접기와 좁은 화면 Drawer를 실제 Navigation에 연결한다.
+- 기존 문서·Database·파일 Tree 기능을 새 Shell 안에서 그대로 유지한다.
+- Settings 진입점은 저장 가능한 환경설정 화면과 함께 다음 이관 묶음에서 추가한다. 동작하지 않는 임시 버튼은 노출하지 않는다.
+
 Prototype에서 다음 구조를 검토한다.
 
 - Sidebar 정보 밀도와 문서 Tree

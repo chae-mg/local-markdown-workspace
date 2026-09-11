@@ -321,13 +321,12 @@ export function WorkspaceTree({
   const creationParentLabel = selectedDirectoryPath || workspaceName
 
   return (
-    <section className="mt-7 min-h-0 flex-1 border-t border-stone-200 pt-5 md:overflow-y-auto md:pr-1">
-      <div className="mb-2 flex items-center justify-between px-1">
+    <section className="mt-2 min-h-0 flex-1 pt-2 md:pr-1">
+      <div className="mb-1 flex items-center justify-between px-1">
         <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-stone-800">
+          <p className="truncate text-[11px] font-semibold text-[var(--ui-muted)]">
             {workspaceName}
           </p>
-          <p className="mt-0.5 text-[11px] text-stone-500">Markdown 파일</p>
         </div>
         <div className="flex items-center gap-0.5">
           <button
@@ -690,14 +689,14 @@ export function WorkspaceTree({
                 aria-level={depth + 1}
                 aria-selected={isDirectory ? isSelectedDirectory : isSelected}
                 draggable={!isMutating}
-                className={`flex w-full cursor-grab items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-xs transition-colors active:cursor-grabbing ${
+                className={`flex h-[30px] w-full cursor-grab items-center gap-1.5 rounded-md pr-2 text-left text-[13px] transition-colors active:cursor-grabbing ${
                   dropTargetPath === entry.path
                     ? 'bg-amber-100 font-medium text-amber-950 ring-1 ring-amber-400'
                     : isSelected
-                      ? 'bg-stone-200 font-medium text-stone-950'
+                      ? 'bg-[var(--ui-hover)] font-medium text-[var(--ui-text)]'
                       : isSelectedDirectory
-                        ? 'bg-amber-50 font-medium text-amber-950'
-                        : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'
+                        ? 'bg-[var(--ui-accent-soft)] font-medium text-[var(--ui-text)]'
+                        : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]'
                 } ${draggedPath === entry.path ? 'opacity-50' : ''}`}
                 key={entry.path}
                 onClick={() => {

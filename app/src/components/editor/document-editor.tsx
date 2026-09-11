@@ -346,12 +346,12 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col bg-stone-50/40">
-      <div className="flex flex-col gap-4 border-b border-stone-200 bg-white px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+    <section className="flex min-h-0 flex-1 flex-col bg-[var(--ui-surface)]">
+      <div className="flex flex-col gap-2 border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <button
             aria-label="문서 목록으로 돌아가기"
-            className="grid size-8 shrink-0 place-items-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900 md:hidden"
+            className="grid size-8 shrink-0 place-items-center rounded-md text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)] md:hidden"
             onClick={onClose}
             type="button"
           >
@@ -359,12 +359,15 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <FileText aria-hidden="true" className="size-4 text-stone-500" />
-              <h1 className="truncate text-base font-semibold tracking-tight">
+              <FileText
+                aria-hidden="true"
+                className="size-3.5 text-[var(--ui-muted)]"
+              />
+              <h1 className="truncate text-[13px] font-medium tracking-tight">
                 {fileNameFromPath(document.path)}
               </h1>
             </div>
-            <p className="mt-1 truncate text-xs text-stone-500">
+            <p className="mt-0.5 truncate text-[10px] text-[var(--ui-muted)]">
               {document.path}
             </p>
           </div>
@@ -373,15 +376,15 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
         <div className="flex flex-wrap items-center gap-2">
           <div
             aria-label="편집 모드"
-            className="flex rounded-xl border border-stone-200 bg-stone-100 p-1"
+            className="flex rounded-md bg-[var(--ui-sidebar)] p-0.5"
             role="group"
           >
             <button
               aria-pressed={editorMode === 'visual'}
-              className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+              className={`flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-colors ${
                 editorMode === 'visual'
-                  ? 'bg-white text-stone-950 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-800'
+                  ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
+                  : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
               }`}
               disabled={Boolean(parsedDocument.error)}
               onClick={() => setEditorMode('visual')}
@@ -392,10 +395,10 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
             </button>
             <button
               aria-pressed={editorMode === 'source'}
-              className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+              className={`flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-colors ${
                 editorMode === 'source'
-                  ? 'bg-white text-stone-950 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-800'
+                  ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
+                  : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
               }`}
               onClick={() => setEditorMode('source')}
               type="button"
@@ -410,7 +413,7 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
             className={`flex items-center gap-1.5 text-xs ${
               status === 'conflict' || status === 'error'
                 ? 'text-red-700'
-                : 'text-stone-500'
+                : 'text-[var(--ui-muted)]'
             }`}
           >
             {status === 'saving' ? (
@@ -563,14 +566,14 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
       ) : null}
 
       <div
-        className="min-h-0 flex-1 overflow-auto p-3 sm:p-6"
+        className="min-h-0 flex-1 overflow-auto"
         onDropCapture={handleDropCapture}
       >
-        <div className="mx-auto min-h-full max-w-4xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <div className="mx-auto min-h-full max-w-[820px] overflow-hidden bg-[var(--ui-surface)]">
           {editorMode === 'visual' && parsedDocument.value ? (
             <Suspense
               fallback={
-                <div className="grid min-h-[34rem] place-items-center text-stone-500">
+                <div className="grid min-h-[34rem] place-items-center text-[var(--ui-muted)]">
                   <LoaderCircle
                     aria-label="시각 편집기 불러오는 중"
                     className="size-4 animate-spin"
@@ -591,7 +594,7 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
           ) : (
             <textarea
               aria-label="Markdown 원문"
-              className="min-h-[40rem] w-full resize-none bg-white px-6 py-8 font-mono text-[15px] leading-7 text-stone-900 outline-none sm:px-10"
+              className="min-h-[calc(100dvh-7.75rem)] w-full resize-none bg-[var(--ui-surface)] px-7 py-10 font-mono text-[15px] leading-7 text-[var(--ui-text)] outline-none sm:px-14"
               disabled={status === 'saving' || status === 'conflict'}
               onChange={(event) => updateDraft(event.target.value)}
               onPaste={handleSourcePaste}

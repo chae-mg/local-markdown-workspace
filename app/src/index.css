@@ -8,8 +8,22 @@
 }
 
 :root {
-  color: #1c1917;
-  background: #f5f3ed;
+  color-scheme: light;
+  --ui-surface: #ffffff;
+  --ui-sidebar: #f7f7f5;
+  --ui-hover: #efefed;
+  --ui-active: #e8e8e5;
+  --ui-border: #e8e8e5;
+  --ui-border-strong: #d9d9d6;
+  --ui-text: #2f2f2d;
+  --ui-muted: #787774;
+  --ui-faint: #a5a5a1;
+  --ui-accent: #2383e2;
+  --ui-accent-hover: #1f75ca;
+  --ui-accent-contrast: #ffffff;
+  --ui-accent-soft: #e7f3ff;
+  color: var(--ui-text);
+  background: var(--ui-surface);
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,6 +39,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background: var(--ui-surface);
 }
 
 button,
@@ -32,6 +47,19 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable='true']:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--ui-accent-soft);
 }
 
 .milkdown-shell .milkdown {
@@ -43,7 +71,7 @@ select {
   min-height: 34rem;
   padding: 3rem clamp(1.5rem, 6vw, 5rem);
   font-family: var(--font-sans);
-  color: #292524;
+  color: var(--ui-text);
 }
 
 .milkdown-shell .milkdown .ProseMirror:focus {
