@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   PanelLeft,
   RefreshCw,
+  Settings,
   ShieldCheck,
   TriangleAlert,
   X,
@@ -19,6 +20,7 @@ import { DocumentEditor } from '@/components/editor/document-editor'
 import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
+import { SettingsDialog } from '@/components/settings/settings-dialog'
 import { Button } from '@/components/ui/button'
 import { useDocumentStore } from '@/stores/document.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
@@ -36,6 +38,7 @@ function WelcomePage() {
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] =
     useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const {
     clearMutationError,
     createFolder,
@@ -316,6 +319,17 @@ function WelcomePage() {
             />
             <span className="min-w-0 truncate">{workspaceStatusLabel}</span>
           </div>
+          <button
+            className="flex h-[31px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-[var(--ui-muted)] transition-colors hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]"
+            onClick={() => {
+              setIsMobileSidebarOpen(false)
+              setIsSettingsOpen(true)
+            }}
+            type="button"
+          >
+            <Settings aria-hidden="true" className="size-4" />
+            설정
+          </button>
         </div>
       </aside>
 
@@ -490,6 +504,10 @@ function WelcomePage() {
           </section>
         )}
       </main>
+      <SettingsDialog
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
   )
 }

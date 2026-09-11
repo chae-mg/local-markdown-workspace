@@ -825,13 +825,15 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 상태: **2026-09-11 UI Foundation V1 확정**
 
-실제 앱 반영 상태: **2026-09-11 환경설정 기반까지 완료**
+실제 앱 반영 상태: **2026-09-11 자동 저장 설정까지 완료**
 
 - 공통 Design Token과 252px Sidebar, 48px Top Bar를 실제 앱에 연결한다.
 - Desktop Sidebar 접기와 좁은 화면 Drawer를 실제 Navigation에 연결한다.
 - 기존 문서·Database·파일 Tree 기능을 새 Shell 안에서 그대로 유지한다.
-- Settings 진입점은 저장 가능한 환경설정 화면과 함께 다음 이관 묶음에서 추가한다. 동작하지 않는 임시 버튼은 노출하지 않는다.
+- Settings 진입점에는 실제 기능이 연결된 항목부터 노출하며, 동작하지 않는 임시 Control은 추가하지 않는다.
 - Version 1 Preference Model, 항목별 Validation, 기본값 복구와 `localStorage` 영속화 Store를 구현했다.
+- Sidebar Settings Dialog에서 자동 저장 사용 여부와 `1초`, `3초`, `5초` 간격을 변경할 수 있으며, 편집기 자동 저장 동작과 상태 표시에 연결했다.
+- Sidebar Settings Dialog에서 자동 저장 On/Off와 1초, 3초, 5초 간격을 변경할 수 있으며 편집기의 실제 자동 저장 동작에 반영했다.
 
 Prototype에서 다음 구조를 검토한다.
 

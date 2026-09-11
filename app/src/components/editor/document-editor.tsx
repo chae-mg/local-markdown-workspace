@@ -27,6 +27,7 @@ import { MarkdownError } from '@/domain/markdown'
 import { attachmentService } from '@/app/composition-root'
 import { markdownService } from '@/services/markdown.service'
 import { useDocumentStore } from '@/stores/document.store'
+import { usePreferencesStore } from '@/stores/preferences.store'
 
 const VisualMarkdownEditor = lazy(() =>
   import('@/components/editor/visual-markdown-editor').then((module) => ({
@@ -63,6 +64,9 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
     status,
     updateDraft,
   } = useDocumentStore()
+  const autosave = usePreferencesStore(
+    (preferencesStore) => preferencesStore.preferences.autosave,
+  )
   const [showNormalizationConfirmation, setShowNormalizationConfirmation] =
     useState(false)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
@@ -102,16 +106,28 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
   const autoSaveBlocked = preservationWarning
 
   useEffect(() => {
-    if (!isDirty || status !== 'ready' || autoSaveBlocked) {
+    if (
+      !autosave.enabled ||
+      !isDirty ||
+      status !== 'ready' ||
+      autoSaveBlocked
+    ) {
       return
     }
 
     const timeoutId = window.setTimeout(() => {
       void useDocumentStore.getState().saveDocument()
-    }, 1000)
+    }, autosave.delayMs)
 
     return () => window.clearTimeout(timeoutId)
-  }, [autoSaveBlocked, draftSource, isDirty, status])
+  }, [
+    autoSaveBlocked,
+    autosave.delayMs,
+    autosave.enabled,
+    draftSource,
+    isDirty,
+    status,
+  ])
 
   const handleVisualChange = useCallback((body: string) => {
     const currentSource = useDocumentStore.getState().draftSource
@@ -314,7 +330,9 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
           : isDirty
             ? autoSaveBlocked
               ? '저장 확인 필요'
-              : '자동 저장 대기'
+              : autosave.enabled
+                ? '자동 저장 대기'
+                : '저장 안 됨'
             : '저장됨'
 
   if (status === 'loading') {
