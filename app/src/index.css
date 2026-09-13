@@ -5,6 +5,37 @@
   --font-sans:
     'Pretendard Variable', Pretendard, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --color-stone-50: var(--ui-sidebar);
+  --color-stone-100: var(--ui-hover);
+  --color-stone-200: var(--ui-active);
+  --color-stone-300: var(--ui-border-strong);
+  --color-stone-400: var(--ui-faint);
+  --color-stone-500: var(--ui-muted);
+  --color-stone-600: var(--ui-muted);
+  --color-stone-700: var(--ui-text);
+  --color-stone-800: var(--ui-text);
+  --color-stone-900: var(--ui-text);
+  --color-stone-950: var(--ui-text);
+  --color-red-50: var(--ui-danger-soft);
+  --color-red-200: var(--ui-danger-border);
+  --color-red-300: var(--ui-danger-border);
+  --color-red-700: var(--ui-danger);
+  --color-red-800: var(--ui-danger);
+  --color-red-900: var(--ui-danger-strong);
+  --color-red-950: var(--ui-danger-strong);
+  --color-amber-50: var(--ui-warning-soft);
+  --color-amber-100: var(--ui-warning-soft);
+  --color-amber-200: var(--ui-warning-border);
+  --color-amber-300: var(--ui-warning-border);
+  --color-amber-400: var(--ui-warning);
+  --color-amber-500: var(--ui-warning);
+  --color-amber-700: var(--ui-warning);
+  --color-amber-800: var(--ui-warning);
+  --color-amber-900: var(--ui-warning-strong);
+  --color-amber-950: var(--ui-warning-strong);
+  --color-emerald-50: var(--ui-success-soft);
+  --color-emerald-600: var(--ui-success);
+  --color-emerald-700: var(--ui-success);
 }
 
 :root {
@@ -22,6 +53,16 @@
   --ui-accent-hover: #1f75ca;
   --ui-accent-contrast: #ffffff;
   --ui-accent-soft: #e7f3ff;
+  --ui-danger-soft: #fef2f2;
+  --ui-danger-border: #fecaca;
+  --ui-danger: #b91c1c;
+  --ui-danger-strong: #7f1d1d;
+  --ui-warning-soft: #fffbeb;
+  --ui-warning-border: #fde68a;
+  --ui-warning: #b45309;
+  --ui-warning-strong: #78350f;
+  --ui-success-soft: #ecfdf5;
+  --ui-success: #047857;
   color: var(--ui-text);
   background: var(--ui-surface);
   font-family: var(--font-sans);
@@ -29,6 +70,29 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ui-surface: #202020;
+  --ui-sidebar: #252525;
+  --ui-hover: #2f2f2f;
+  --ui-active: #373737;
+  --ui-border: #363636;
+  --ui-border-strong: #464646;
+  --ui-text: #e7e7e5;
+  --ui-muted: #a6a6a2;
+  --ui-faint: #72726f;
+  --ui-danger-soft: #3b2024;
+  --ui-danger-border: #71313a;
+  --ui-danger: #f87171;
+  --ui-danger-strong: #fecaca;
+  --ui-warning-soft: #3b2d18;
+  --ui-warning-border: #765423;
+  --ui-warning: #fbbf24;
+  --ui-warning-strong: #fde68a;
+  --ui-success-soft: #17372c;
+  --ui-success: #6ee7b7;
 }
 
 * {
@@ -65,6 +129,23 @@ select:focus-visible,
 .milkdown-shell .milkdown {
   min-height: 34rem;
   background: transparent;
+  --crepe-color-background: var(--ui-surface);
+  --crepe-color-on-background: var(--ui-text);
+  --crepe-color-surface: var(--ui-sidebar);
+  --crepe-color-surface-low: var(--ui-hover);
+  --crepe-color-on-surface: var(--ui-text);
+  --crepe-color-on-surface-variant: var(--ui-muted);
+  --crepe-color-outline: var(--ui-border-strong);
+  --crepe-color-primary: var(--ui-text);
+  --crepe-color-secondary: var(--ui-active);
+  --crepe-color-on-secondary: var(--ui-text);
+  --crepe-color-inverse: var(--ui-text);
+  --crepe-color-on-inverse: var(--ui-surface);
+  --crepe-color-inline-code: var(--ui-danger);
+  --crepe-color-error: var(--ui-danger);
+  --crepe-color-hover: var(--ui-hover);
+  --crepe-color-selected: var(--ui-active);
+  --crepe-color-inline-area: var(--ui-border-strong);
 }
 
 .milkdown-shell .milkdown .ProseMirror {

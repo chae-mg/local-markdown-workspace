@@ -192,7 +192,7 @@ export function WorkspaceTrash({
                     </div>
                     <button
                       aria-label={`${entryName(entry)} 복원`}
-                      className="grid size-7 shrink-0 place-items-center rounded-md text-stone-500 hover:bg-white hover:text-emerald-700 disabled:opacity-50"
+                      className="grid size-7 shrink-0 place-items-center rounded-md text-stone-500 hover:bg-[var(--ui-surface)] hover:text-emerald-700 disabled:opacity-50"
                       disabled={isMutating}
                       onClick={() => startRestore(entry)}
                       title="복원"
@@ -211,7 +211,7 @@ export function WorkspaceTrash({
                         복원할 이름
                         <input
                           aria-label="복원할 이름"
-                          className="mt-1 h-8 w-full rounded-lg border border-stone-300 bg-white px-2.5 text-xs outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
+                          className="mt-1 h-8 w-full rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2.5 text-xs outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
                           disabled={isMutating}
                           onChange={(event) =>
                             setRestoreName(event.target.value)
@@ -230,7 +230,7 @@ export function WorkspaceTrash({
                       ) : null}
                       <div className="mt-2 flex gap-1.5">
                         <button
-                          className="h-8 flex-1 rounded-lg border border-stone-300 bg-white text-xs text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                          className="h-8 flex-1 rounded-lg border border-stone-300 bg-[var(--ui-surface)] text-xs text-stone-700 hover:bg-stone-50 disabled:opacity-50"
                           disabled={isMutating}
                           onClick={cancelRestore}
                           type="button"
@@ -238,7 +238,7 @@ export function WorkspaceTrash({
                           취소
                         </button>
                         <button
-                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-white hover:bg-stone-800 disabled:opacity-50"
+                          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-[var(--ui-surface)] hover:bg-stone-800 disabled:opacity-50"
                           disabled={isMutating || !restoreName.trim()}
                           type="submit"
                         >
@@ -273,7 +273,7 @@ export function WorkspaceTrash({
               ) : null}
               <div className="mt-2 flex gap-1.5">
                 <button
-                  className="h-8 flex-1 rounded-lg border border-red-200 bg-white text-xs text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                  className="h-8 flex-1 rounded-lg border border-red-200 bg-[var(--ui-surface)] text-xs text-stone-700 hover:bg-stone-50 disabled:opacity-50"
                   disabled={isMutating}
                   onClick={cancelEmpty}
                   type="button"

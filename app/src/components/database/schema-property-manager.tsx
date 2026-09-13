@@ -219,7 +219,7 @@ export function SchemaPropertyManager({
         className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs ${
           option.deleted
             ? 'border-stone-200 bg-stone-50 text-stone-400'
-            : 'border-stone-200 bg-white text-stone-700'
+            : 'border-stone-200 bg-[var(--ui-surface)] text-stone-700'
         }`}
         key={option.id}
       >
@@ -324,7 +324,7 @@ export function SchemaPropertyManager({
 
       {showCreateForm ? (
         <form
-          className="mt-3 grid gap-2 rounded-xl border border-stone-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_9rem_auto]"
+          className="mt-3 grid gap-2 rounded-xl border border-stone-200 bg-[var(--ui-surface)] p-3 sm:grid-cols-[minmax(0,1fr)_9rem_auto]"
           onSubmit={(event) => void handleCreateProperty(event)}
         >
           <label className="sr-only" htmlFor="property-name">
@@ -343,7 +343,7 @@ export function SchemaPropertyManager({
             새 속성 타입
           </label>
           <select
-            className="h-9 rounded-lg border border-stone-300 bg-white px-2 text-xs outline-none focus:border-stone-500"
+            className="h-9 rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2 text-xs outline-none focus:border-stone-500"
             disabled={isMutating}
             id="property-type"
             onChange={(event) =>
@@ -380,7 +380,7 @@ export function SchemaPropertyManager({
               renameTarget.propertyId === property.id
             return (
               <div
-                className="rounded-xl border border-stone-200 bg-white"
+                className="rounded-xl border border-stone-200 bg-[var(--ui-surface)]"
                 key={property.id}
               >
                 <div className="flex flex-wrap items-center gap-2 p-2.5">
@@ -539,7 +539,7 @@ export function SchemaPropertyManager({
                         {property.name} 새 Option 이름
                       </label>
                       <input
-                        className="h-8 min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-2 text-xs outline-none focus:border-stone-500"
+                        className="h-8 min-w-0 flex-1 rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2 text-xs outline-none focus:border-stone-500"
                         disabled={isMutating}
                         id={`option-${property.id}`}
                         onChange={(event) =>
@@ -598,7 +598,7 @@ export function SchemaPropertyManager({
                   <span>{propertyTypeLabels[property.type]}</span>
                   <button
                     aria-label={`${property.name} 속성 복원`}
-                    className="grid size-7 place-items-center rounded-md hover:bg-white hover:text-stone-700"
+                    className="grid size-7 place-items-center rounded-md hover:bg-[var(--ui-surface)] hover:text-stone-700"
                     disabled={isMutating}
                     onClick={() =>
                       void runMutation(() =>

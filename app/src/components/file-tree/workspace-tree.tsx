@@ -399,7 +399,7 @@ export function WorkspaceTree({
 
       {creationKind ? (
         <form
-          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-white p-2.5 shadow-sm"
+          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-[var(--ui-surface)] p-2.5 shadow-sm"
           onSubmit={(event) => void handleCreate(event)}
         >
           <div className="mb-2 flex items-start justify-between gap-2">
@@ -425,7 +425,7 @@ export function WorkspaceTree({
             aria-label={
               creationKind === 'file' ? '새 문서 이름' : '새 폴더 이름'
             }
-            className="h-8 w-full rounded-lg border border-stone-300 bg-white px-2.5 text-xs transition-shadow outline-none placeholder:text-stone-400 focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
+            className="h-8 w-full rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2.5 text-xs transition-shadow outline-none placeholder:text-stone-400 focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
             disabled={isMutating}
             onChange={(event) => setEntryName(event.target.value)}
             placeholder={creationKind === 'file' ? '회의록' : '새 프로젝트'}
@@ -438,7 +438,7 @@ export function WorkspaceTree({
             </p>
           ) : null}
           <button
-            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
+            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-[var(--ui-surface)] transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
             disabled={isMutating || !entryName.trim()}
             type="submit"
           >
@@ -454,7 +454,7 @@ export function WorkspaceTree({
       ) : null}
 
       {entryAction === 'menu' && selectedActionEntry ? (
-        <div className="mx-1 mt-3 rounded-xl border border-stone-200 bg-white p-1.5 shadow-sm">
+        <div className="mx-1 mt-3 rounded-xl border border-stone-200 bg-[var(--ui-surface)] p-1.5 shadow-sm">
           <div className="flex items-center justify-between gap-2 px-2 py-1">
             <p className="min-w-0 truncate text-[11px] font-medium text-stone-700">
               {selectedActionEntry.name}
@@ -498,7 +498,7 @@ export function WorkspaceTree({
 
       {entryAction === 'move' && selectedActionEntry ? (
         <form
-          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-white p-2.5 shadow-sm"
+          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-[var(--ui-surface)] p-2.5 shadow-sm"
           onSubmit={(event) => void handleMove(event)}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -523,7 +523,7 @@ export function WorkspaceTree({
           {moveDestinations.length > 0 ? (
             <select
               aria-label="이동할 폴더"
-              className="h-8 w-full rounded-lg border border-stone-300 bg-white px-2 text-xs text-stone-700 outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
+              className="h-8 w-full rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2 text-xs text-stone-700 outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
               disabled={isMutating}
               onChange={(event) => setMoveDestinationPath(event.target.value)}
               value={moveDestinationPath}
@@ -545,7 +545,7 @@ export function WorkspaceTree({
             </p>
           ) : null}
           <button
-            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
+            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-[var(--ui-surface)] transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
             disabled={isMutating || moveDestinations.length === 0}
             type="submit"
           >
@@ -562,7 +562,7 @@ export function WorkspaceTree({
 
       {entryAction === 'rename' && selectedActionEntry ? (
         <form
-          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-white p-2.5 shadow-sm"
+          className="mx-1 mt-3 rounded-xl border border-stone-200 bg-[var(--ui-surface)] p-2.5 shadow-sm"
           onSubmit={(event) => void handleRename(event)}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -581,7 +581,7 @@ export function WorkspaceTree({
           </div>
           <input
             aria-label="변경할 이름"
-            className="h-8 w-full rounded-lg border border-stone-300 bg-white px-2.5 text-xs transition-shadow outline-none placeholder:text-stone-400 focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
+            className="h-8 w-full rounded-lg border border-stone-300 bg-[var(--ui-surface)] px-2.5 text-xs transition-shadow outline-none placeholder:text-stone-400 focus:border-stone-500 focus:ring-2 focus:ring-stone-200 disabled:bg-stone-50"
             disabled={isMutating}
             onChange={(event) => setEntryName(event.target.value)}
             ref={inputRef}
@@ -593,7 +593,7 @@ export function WorkspaceTree({
             </p>
           ) : null}
           <button
-            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
+            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-stone-950 text-xs font-medium text-[var(--ui-surface)] transition-colors hover:bg-stone-800 disabled:cursor-wait disabled:opacity-50"
             disabled={isMutating || !entryName.trim()}
             type="submit"
           >
@@ -623,7 +623,7 @@ export function WorkspaceTree({
           ) : null}
           <div className="mt-2 flex gap-1.5">
             <button
-              className="h-8 flex-1 rounded-lg border border-red-200 bg-white text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+              className="h-8 flex-1 rounded-lg border border-red-200 bg-[var(--ui-surface)] text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
               disabled={isMutating}
               onClick={cancelEntryAction}
               type="button"

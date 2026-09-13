@@ -1,8 +1,12 @@
 import { RotateCcw, Settings2, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import type { AutosaveDelayMs } from '@/domain/preferences'
+import type {
+  AccentPreset,
+  AutosaveDelayMs,
+  ThemePreference,
+} from '@/domain/preferences'
 import { usePreferencesStore } from '@/stores/preferences.store'
 
 interface SettingsDialogProps {
@@ -19,15 +23,51 @@ const autosaveDelayOptions: Array<{
   { label: '5초', value: 5000 },
 ]
 
+const themeOptions: Array<{ label: string; value: ThemePreference }> = [
+  { label: '라이트', value: 'light' },
+  { label: '다크', value: 'dark' },
+  { label: '시스템', value: 'system' },
+]
+
+const accentOptions: Array<{
+  color: string
+  label: string
+  value: AccentPreset
+}> = [
+  { color: '#2383E2', label: '파랑', value: 'blue' },
+  { color: '#D9730D', label: '주황', value: 'orange' },
+  { color: '#9065B0', label: '보라', value: 'purple' },
+  {
+    color: 'linear-gradient(135deg, #2F2F2D 50%, #F4F4F2 50%)',
+    label: '검정/흰색',
+    value: 'monochrome',
+  },
+  {
+    color:
+      'conic-gradient(from 45deg, #E03E3E, #D9730D, #DFAB01, #0F9D75, #2383E2, #9065B0, #E03E3E)',
+    label: '커스텀',
+    value: 'custom',
+  },
+]
+
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const {
     preferences,
     resetPreferences,
+    setAccentPreset,
     setAutosaveDelay,
     setAutosaveEnabled,
+    setCustomAccent,
+    setTheme,
     storageError,
   } = usePreferencesStore()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const [customAccentDraft, setCustomAccentDraft] = useState(
+    preferences.accent.customHex,
+  )
+  const [customAccentError, setCustomAccentError] = useState<string | null>(
+    null,
+  )
 
   useEffect(() => {
     if (!isOpen) {
@@ -45,6 +85,26 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
+
+  const handleSaveCustomAccent = () => {
+    if (!setCustomAccent(customAccentDraft.trim())) {
+      setCustomAccentError('# 뒤에 여섯 자리 HEX 색상을 입력해 주세요.')
+      return
+    }
+
+    setCustomAccentDraft(
+      usePreferencesStore.getState().preferences.accent.customHex,
+    )
+    setCustomAccentError(null)
+  }
+
+  const handleResetPreferences = () => {
+    resetPreferences()
+    setCustomAccentDraft(
+      usePreferencesStore.getState().preferences.accent.customHex,
+    )
+    setCustomAccentError(null)
+  }
 
   if (!isOpen) {
     return null
@@ -117,7 +177,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     type="checkbox"
                   />
                   <span className="block h-6 w-10 rounded-full bg-[var(--ui-border-strong)] transition-colors peer-checked:bg-[var(--ui-accent)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ui-accent)] peer-focus-visible:ring-offset-2" />
-                  <span className="absolute top-1 left-1 size-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
+                  <span className="absolute top-1 left-1 size-4 rounded-full bg-[#fff] shadow-sm transition-transform peer-checked:translate-x-4" />
                 </span>
               </label>
 
@@ -146,6 +206,161 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           </div>
 
+          <div className="mt-6">
+            <p className="text-xs font-semibold text-[var(--ui-muted)]">화면</p>
+            <div className="mt-2 rounded-lg border border-[var(--ui-border)] px-4 py-4">
+              <div>
+                <strong className="block text-sm font-medium">테마</strong>
+                <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
+                  현재 기기에서 사용할 화면 모드를 선택합니다.
+                </p>
+              </div>
+              <div
+                aria-label="테마"
+                className="mt-3 grid grid-cols-3 gap-2"
+                role="radiogroup"
+              >
+                {themeOptions.map((option) => {
+                  const isSelected = preferences.theme === option.value
+                  const previewClass =
+                    option.value === 'light'
+                      ? 'bg-[#fff]'
+                      : option.value === 'dark'
+                        ? 'bg-[#202020]'
+                        : 'bg-[linear-gradient(90deg,#fff_50%,#202020_50%)]'
+
+                  return (
+                    <button
+                      aria-checked={isSelected}
+                      className={`min-w-0 rounded-lg border p-1 text-left transition-colors ${
+                        isSelected
+                          ? 'border-[var(--ui-accent)] ring-1 ring-[var(--ui-accent)]'
+                          : 'border-[var(--ui-border)] hover:border-[var(--ui-border-strong)]'
+                      }`}
+                      key={option.value}
+                      onClick={() => setTheme(option.value)}
+                      role="radio"
+                      type="button"
+                    >
+                      <span
+                        className={`relative block h-12 overflow-hidden rounded-[5px] shadow-[inset_0_0_0_1px_rgb(127_127_127/18%)] ${previewClass}`}
+                      >
+                        <span
+                          className={`absolute inset-y-0 left-0 w-[30%] ${
+                            option.value === 'light'
+                              ? 'bg-[#f0f0ee]'
+                              : option.value === 'dark'
+                                ? 'bg-[#292929]'
+                                : 'bg-[linear-gradient(90deg,#f0f0ee_50%,#292929_50%)]'
+                          }`}
+                        />
+                        <span className="absolute top-3.5 right-[12%] h-1 w-[45%] rounded-full bg-[#8a8a87]/45 shadow-[0_9px_0_rgb(138_138_135/45%),0_18px_0_rgb(138_138_135/45%)]" />
+                      </span>
+                      <span className="block truncate px-1 pt-1.5 pb-0.5 text-[11px] font-medium">
+                        {option.label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-5 border-t border-[var(--ui-border)] pt-4">
+                <strong className="block text-sm font-medium">키 컬러</strong>
+                <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
+                  버튼과 선택 상태에만 적용되며 문서 내용은 바꾸지 않습니다.
+                </p>
+                <div
+                  aria-label="키 컬러"
+                  className="mt-3 grid grid-cols-5 gap-1.5"
+                  role="radiogroup"
+                >
+                  {accentOptions.map((option) => {
+                    const isSelected =
+                      preferences.accent.preset === option.value
+                    const swatchColor =
+                      option.value === 'custom'
+                        ? preferences.accent.customHex
+                        : option.color
+
+                    return (
+                      <button
+                        aria-checked={isSelected}
+                        className={`grid min-w-0 place-items-center gap-1.5 rounded-lg border px-1 py-2 text-[10px] font-medium transition-colors ${
+                          isSelected
+                            ? 'border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)]'
+                            : 'border-transparent text-[var(--ui-muted)] hover:bg-[var(--ui-sidebar)] hover:text-[var(--ui-text)]'
+                        }`}
+                        key={option.value}
+                        onClick={() => {
+                          setAccentPreset(option.value)
+                          setCustomAccentError(null)
+                        }}
+                        role="radio"
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="size-6 rounded-full border-2 border-[var(--ui-surface)] shadow-[0_0_0_1px_var(--ui-border-strong)]"
+                          style={{ background: swatchColor }}
+                        />
+                        <span className="max-w-full truncate">
+                          {option.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {preferences.accent.preset === 'custom' ? (
+                  <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-sidebar)] p-3">
+                    <label className="grid gap-1 text-[10px] font-semibold text-[var(--ui-muted)]">
+                      색상
+                      <input
+                        aria-label="커스텀 키 컬러 선택"
+                        className="h-8 w-11 cursor-pointer rounded-md border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] p-0.5"
+                        onChange={(event) => {
+                          setCustomAccentDraft(event.target.value.toUpperCase())
+                          setCustomAccentError(null)
+                        }}
+                        type="color"
+                        value={
+                          /^#[0-9a-f]{6}$/i.test(customAccentDraft)
+                            ? customAccentDraft
+                            : preferences.accent.customHex
+                        }
+                      />
+                    </label>
+                    <label className="grid min-w-0 gap-1 text-[10px] font-semibold text-[var(--ui-muted)]">
+                      HEX
+                      <input
+                        aria-describedby="custom-accent-error"
+                        aria-invalid={Boolean(customAccentError)}
+                        className="h-8 min-w-0 rounded-md border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2 font-mono text-xs font-normal text-[var(--ui-text)] uppercase outline-none aria-invalid:border-[var(--ui-danger)]"
+                        maxLength={7}
+                        onChange={(event) => {
+                          setCustomAccentDraft(event.target.value.toUpperCase())
+                          setCustomAccentError(null)
+                        }}
+                        spellCheck={false}
+                        value={customAccentDraft}
+                      />
+                    </label>
+                    <Button onClick={handleSaveCustomAccent} size="sm">
+                      컬러 저장
+                    </Button>
+                    <p
+                      className="col-start-2 col-end-4 min-h-4 text-[10px] text-[var(--ui-danger)]"
+                      id="custom-accent-error"
+                      role={customAccentError ? 'alert' : undefined}
+                    >
+                      {customAccentError}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
           {storageError ? (
             <p
               className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900"
@@ -156,15 +371,14 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           ) : null}
 
           <div className="mt-5 rounded-lg bg-[var(--ui-sidebar)] px-4 py-3 text-xs leading-5 text-[var(--ui-muted)]">
-            테마, 키 컬러와 문서 글꼴은 각 화면에 일관되게 적용하는 다음
-            단계에서 추가됩니다.
+            문서 글꼴과 새 문서의 기본 편집 모드는 다음 단계에서 추가됩니다.
           </div>
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[var(--ui-border)] px-5 py-3 sm:px-6">
           <button
             className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]"
-            onClick={resetPreferences}
+            onClick={handleResetPreferences}
             type="button"
           >
             <RotateCcw aria-hidden="true" className="size-3.5" />

@@ -41,6 +41,41 @@ describe('SettingsDialog', () => {
     expect(delaySelect).toBeDisabled()
   })
 
+  it('changes the theme and accent preset', async () => {
+    const user = userEvent.setup()
+    render(<SettingsDialog isOpen onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('radio', { name: '다크' }))
+    await user.click(screen.getByRole('radio', { name: '보라' }))
+
+    expect(usePreferencesStore.getState().preferences).toMatchObject({
+      theme: 'dark',
+      accent: { preset: 'purple' },
+    })
+  })
+
+  it('validates and saves a reusable custom accent color', async () => {
+    const user = userEvent.setup()
+    render(<SettingsDialog isOpen onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('radio', { name: '커스텀' }))
+    const hexInput = screen.getByLabelText('HEX')
+    await user.clear(hexInput)
+    await user.type(hexInput, '#BAD')
+    await user.click(screen.getByRole('button', { name: '컬러 저장' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('여섯 자리 HEX')
+
+    await user.clear(hexInput)
+    await user.type(hexInput, '#12abef')
+    await user.click(screen.getByRole('button', { name: '컬러 저장' }))
+
+    expect(usePreferencesStore.getState().preferences.accent).toEqual({
+      preset: 'custom',
+      customHex: '#12ABEF',
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('closes with Escape', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()

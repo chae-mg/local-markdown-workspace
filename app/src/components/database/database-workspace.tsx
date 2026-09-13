@@ -192,7 +192,7 @@ export function DatabaseWorkspace({
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-[var(--ui-surface)] px-3 py-1.5 text-xs font-medium text-stone-600">
               <Database aria-hidden="true" className="size-3.5" />
               Markdown Database
             </div>
@@ -227,7 +227,7 @@ export function DatabaseWorkspace({
 
         {showDatabaseForm ? (
           <form
-            className="mt-6 flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:flex-row"
+            className="mt-6 flex flex-col gap-3 rounded-2xl border border-stone-200 bg-[var(--ui-surface)] p-4 shadow-sm sm:flex-row"
             onSubmit={(event) => void handleCreateDatabase(event)}
           >
             <label className="sr-only" htmlFor="database-name">
@@ -235,7 +235,7 @@ export function DatabaseWorkspace({
             </label>
             <input
               autoFocus
-              className="h-11 min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-3 text-sm transition outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-stone-300 bg-[var(--ui-surface)] px-3 text-sm transition outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200"
               disabled={isMutating}
               id="database-name"
               onChange={(event) => setDatabaseName(event.target.value)}
@@ -280,7 +280,7 @@ export function DatabaseWorkspace({
         ) : null}
 
         <div className="mt-7 grid min-h-[28rem] gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
-          <aside className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+          <aside className="rounded-2xl border border-stone-200 bg-[var(--ui-surface)] p-3 shadow-sm">
             <p className="px-3 pt-1 pb-2 text-xs font-semibold tracking-[0.12em] text-stone-400 uppercase">
               Databases · {databases.length}
             </p>
@@ -304,7 +304,7 @@ export function DatabaseWorkspace({
                     aria-pressed={database.id === selectedDatabaseId}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
                       database.id === selectedDatabaseId
-                        ? 'bg-stone-950 font-medium text-white'
+                        ? 'bg-stone-950 font-medium text-[var(--ui-surface)]'
                         : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950'
                     }`}
                     disabled={isMutating}
@@ -323,7 +323,7 @@ export function DatabaseWorkspace({
             )}
           </aside>
 
-          <div className="min-w-0 rounded-2xl border border-stone-200 bg-white shadow-sm">
+          <div className="min-w-0 rounded-2xl border border-stone-200 bg-[var(--ui-surface)] shadow-sm">
             {selectedDatabase ? (
               <>
                 <div className="flex flex-col justify-between gap-4 border-b border-stone-200 px-5 py-5 sm:flex-row sm:items-center">
@@ -381,7 +381,7 @@ export function DatabaseWorkspace({
                     </label>
                     <input
                       autoFocus
-                      className="h-10 min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-3 text-sm transition outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200"
+                      className="h-10 min-w-0 flex-1 rounded-xl border border-stone-300 bg-[var(--ui-surface)] px-3 text-sm transition outline-none focus:border-stone-500 focus:ring-2 focus:ring-stone-200"
                       disabled={isMutating}
                       id="database-item-title"
                       onChange={(event) => setItemTitle(event.target.value)}

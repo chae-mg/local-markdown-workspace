@@ -35,6 +35,56 @@ test('opens the workspace sidebar as a drawer on a narrow screen', async ({
   await expect(sidebar).toHaveCSS('width', '252px')
 })
 
+test('applies and restores theme and accent preferences', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/#/')
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+
+  const settingsDialog = page.getByRole('dialog', {
+    name: '나에게 맞게 조정하기',
+  })
+  await settingsDialog.getByRole('radio', { name: '다크' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(
+    page.getByRole('complementary', { name: '워크스페이스 사이드바' }),
+  ).toHaveCSS('background-color', 'rgb(37, 37, 37)')
+
+  await settingsDialog.getByRole('radio', { name: '주황' }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        document.documentElement.style.getPropertyValue('--ui-accent'),
+      ),
+    )
+    .toBe('#E58A32')
+
+  await settingsDialog.getByRole('radio', { name: '커스텀' }).click()
+  await settingsDialog.getByLabel('HEX').fill('#12abef')
+  await settingsDialog.getByRole('button', { name: '컬러 저장' }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        document.documentElement.style.getPropertyValue('--ui-accent'),
+      ),
+    )
+    .toBe('#12ABEF')
+
+  await settingsDialog.getByRole('button', { name: '완료' }).click()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  expect(
+    await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue('--ui-accent'),
+    ),
+  ).toBe('#12ABEF')
+
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await settingsDialog.getByRole('radio', { name: '시스템' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+})
+
 test('uses a real directory handle for the complete workspace flow', async ({
   page,
 }) => {
