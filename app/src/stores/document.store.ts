@@ -16,6 +16,7 @@ export interface DocumentStore {
   preservationWarning: boolean
   status: DocumentStatus
   closeDocument(): void
+  discardDraft(): void
   forceSave(): Promise<boolean>
   openDocument(path: string): Promise<void>
   reloadDocument(): Promise<void>
@@ -108,6 +109,20 @@ export function createDocumentStore(service: DocumentApplicationService) {
           errorMessage: null,
           preservationWarning: false,
           status: 'idle',
+        })
+      },
+
+      discardDraft() {
+        const document = get().document
+        if (!document) {
+          return
+        }
+
+        set({
+          draftSource: document.source,
+          errorMessage: null,
+          preservationWarning: false,
+          status: 'ready',
         })
       },
 

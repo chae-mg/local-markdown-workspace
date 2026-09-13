@@ -825,15 +825,18 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 상태: **2026-09-11 UI Foundation V1 확정**
 
-실제 앱 반영 상태: **2026-09-11 자동 저장 설정까지 완료**
+실제 앱 반영 상태: **2026-09-13 미저장 변경 보호까지 완료**
 
 - 공통 Design Token과 252px Sidebar, 48px Top Bar를 실제 앱에 연결한다.
 - Desktop Sidebar 접기와 좁은 화면 Drawer를 실제 Navigation에 연결한다.
 - 기존 문서·Database·파일 Tree 기능을 새 Shell 안에서 그대로 유지한다.
 - Settings 진입점에는 실제 기능이 연결된 항목부터 노출하며, 동작하지 않는 임시 Control은 추가하지 않는다.
 - Version 1 Preference Model, 항목별 Validation, 기본값 복구와 `localStorage` 영속화 Store를 구현했다.
-- Sidebar Settings Dialog에서 자동 저장 사용 여부와 `1초`, `3초`, `5초` 간격을 변경할 수 있으며, 편집기 자동 저장 동작과 상태 표시에 연결했다.
 - Sidebar Settings Dialog에서 자동 저장 On/Off와 1초, 3초, 5초 간격을 변경할 수 있으며 편집기의 실제 자동 저장 동작에 반영했다.
+- 상단 저장 버튼과 함께 `Ctrl+S` / `Cmd+S` 수동 저장을 연결했다.
+- 변경사항이 남은 상태에서 다른 문서나 화면으로 이동하거나 파일 작업을 시작하면 저장, 폐기, 취소 중 하나를 선택할 수 있다.
+- 저장 실패 또는 외부 변경 충돌 시 이동을 취소하고 현재 Draft를 유지하며, 폐기를 선택하면 디스크 파일을 수정하지 않고 메모리 Draft만 되돌린다.
+- Browser 새로고침, Tab 닫기, 창 닫기에는 표준 `beforeunload` 경고를 연결했다.
 
 Prototype에서 다음 구조를 검토한다.
 

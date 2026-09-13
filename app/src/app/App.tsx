@@ -13,10 +13,11 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { DocumentEditor } from '@/components/editor/document-editor'
+import { UnsavedChangesDialog } from '@/components/editor/unsaved-changes-dialog'
 import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
@@ -39,6 +40,12 @@ function WelcomePage() {
     useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false)
+  const [isSavingBeforeNavigation, setIsSavingBeforeNavigation] =
+    useState(false)
+  const unsavedResolutionRef = useRef<
+    ((shouldContinue: boolean) => void) | null
+  >(null)
   const {
     clearMutationError,
     createFolder,
@@ -119,11 +126,31 @@ function WelcomePage() {
       return true
     }
 
-    if (documentState.preservationWarning) {
-      return false
-    }
+    return new Promise<boolean>((resolve) => {
+      unsavedResolutionRef.current = resolve
+      setIsUnsavedDialogOpen(true)
+    })
+  }
 
-    return documentState.saveDocument()
+  const resolveUnsavedChanges = (shouldContinue: boolean) => {
+    setIsUnsavedDialogOpen(false)
+    const resolve = unsavedResolutionRef.current
+    unsavedResolutionRef.current = null
+    resolve?.(shouldContinue)
+  }
+
+  const handleCancelNavigation = () => resolveUnsavedChanges(false)
+
+  const handleDiscardAndNavigate = () => {
+    useDocumentStore.getState().discardDraft()
+    resolveUnsavedChanges(true)
+  }
+
+  const handleSaveAndNavigate = async () => {
+    setIsSavingBeforeNavigation(true)
+    const saved = await useDocumentStore.getState().saveDocument()
+    setIsSavingBeforeNavigation(false)
+    resolveUnsavedChanges(saved)
   }
 
   const handleEntrySelect = async (path: string) => {
@@ -382,6 +409,7 @@ function WelcomePage() {
           />
         ) : isReady && selectedPath ? (
           <DocumentEditor
+            isAutosaveSuspended={isUnsavedDialogOpen}
             key={selectedPath}
             onClose={() => void handleDirectorySelect(selectedDirectoryPath)}
             path={selectedPath}
@@ -507,6 +535,18 @@ function WelcomePage() {
       <SettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+      <UnsavedChangesDialog
+        documentName={
+          useDocumentStore.getState().document?.path.split('/').at(-1) ??
+          '현재 문서'
+        }
+        hasPreservationWarning={useDocumentStore.getState().preservationWarning}
+        isOpen={isUnsavedDialogOpen}
+        isSaving={isSavingBeforeNavigation}
+        onCancel={handleCancelNavigation}
+        onDiscard={handleDiscardAndNavigate}
+        onSave={() => void handleSaveAndNavigate()}
       />
     </div>
   )

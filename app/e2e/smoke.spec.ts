@@ -280,8 +280,45 @@ test('uses a real directory handle for the complete workspace flow', async ({
   })
   expect(contentBeforeManualSave).toBe('')
 
-  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await page.keyboard.press('Control+s')
   await expect(page.getByText('저장됨')).toBeVisible()
+
+  const sourceEditor = page.getByRole('textbox', { name: 'Markdown 원문' })
+  await sourceEditor.fill('# 이동 취소 확인')
+  await page.getByRole('button', { name: '데이터베이스' }).click()
+  const unsavedDialog = page.getByRole('dialog', {
+    name: '저장하지 않은 변경사항이 있습니다',
+  })
+  await expect(unsavedDialog).toContainText('작업 일지.md')
+  await unsavedDialog.getByRole('button', { name: '취소' }).click()
+  await expect(sourceEditor).toHaveValue('# 이동 취소 확인')
+
+  await page.getByRole('button', { name: '데이터베이스' }).click()
+  await unsavedDialog.getByRole('button', { name: '저장하고 이동' }).click()
+  await expect(
+    page.getByRole('heading', { name: '데이터베이스' }),
+  ).toBeVisible()
+  await page.getByRole('treeitem', { name: '작업 일지.md' }).click()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await expect(
+    page.getByRole('textbox', { name: 'Markdown 원문' }),
+  ).toHaveValue('# 이동 취소 확인')
+
+  await page
+    .getByRole('textbox', { name: 'Markdown 원문' })
+    .fill('# 저장하지 않을 변경')
+  await page.getByRole('button', { name: '데이터베이스' }).click()
+  await unsavedDialog
+    .getByRole('button', { name: '저장하지 않고 이동' })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: '데이터베이스' }),
+  ).toBeVisible()
+  await page.getByRole('treeitem', { name: '작업 일지.md' }).click()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await expect(
+    page.getByRole('textbox', { name: 'Markdown 원문' }),
+  ).toHaveValue('# 이동 취소 확인')
 
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await settingsDialog.getByRole('checkbox', { name: '자동 저장 사용' }).check()
@@ -334,7 +371,6 @@ test('uses a real directory handle for the complete workspace flow', async ({
     page.getByRole('textbox', { name: 'Markdown 원문' }),
   ).toHaveValue(/!\[pixel\]\(\.\.\/Attachments\/img_[a-f\d]+\.png\)/)
 
-  const sourceEditor = page.getByRole('textbox', { name: 'Markdown 원문' })
   await sourceEditor.evaluate((element) => {
     const transfer = new DataTransfer()
     transfer.items.add(

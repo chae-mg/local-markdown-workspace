@@ -76,4 +76,27 @@ describe('document store', () => {
       expect.objectContaining({ force: true, source: '# 내 수정\n' }),
     )
   })
+
+  it('discards only the in-memory draft without writing to disk', async () => {
+    const service = createService()
+    const store = createDocumentStore(service)
+
+    await store.getState().openDocument(openedDocument.path)
+    store.getState().updateDraft('# 버릴 수정\n')
+    store.setState({
+      errorMessage: '저장하지 못했습니다.',
+      preservationWarning: true,
+      status: 'error',
+    })
+    store.getState().discardDraft()
+
+    expect(service.saveDocument).not.toHaveBeenCalled()
+    expect(store.getState()).toMatchObject({
+      document: openedDocument,
+      draftSource: openedDocument.source,
+      errorMessage: null,
+      preservationWarning: false,
+      status: 'ready',
+    })
+  })
 })

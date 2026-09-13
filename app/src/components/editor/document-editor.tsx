@@ -36,6 +36,7 @@ const VisualMarkdownEditor = lazy(() =>
 )
 
 interface DocumentEditorProps {
+  isAutosaveSuspended?: boolean
   onClose(): void
   path: string
 }
@@ -48,7 +49,11 @@ function fileNameFromPath(path: string) {
   return path.split('/').at(-1) ?? path
 }
 
-export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
+export function DocumentEditor({
+  isAutosaveSuspended = false,
+  onClose,
+  path,
+}: DocumentEditorProps) {
   const {
     document,
     draftSource,
@@ -108,6 +113,7 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
   useEffect(() => {
     if (
       !autosave.enabled ||
+      isAutosaveSuspended ||
       !isDirty ||
       status !== 'ready' ||
       autoSaveBlocked
@@ -126,8 +132,23 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
     autosave.enabled,
     draftSource,
     isDirty,
+    isAutosaveSuspended,
     status,
   ])
+
+  useEffect(() => {
+    if (!isDirty) {
+      return
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
 
   const handleVisualChange = useCallback((body: string) => {
     const currentSource = useDocumentStore.getState().draftSource
@@ -310,7 +331,7 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
     void saveAttachments(files)
   }
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (preservationWarning && editorMode === 'visual') {
       setShowNormalizationConfirmation(true)
       return
@@ -318,7 +339,21 @@ export function DocumentEditor({ onClose, path }: DocumentEditorProps) {
 
     setPreservationWarning(false)
     void saveDocument()
-  }
+  }, [editorMode, preservationWarning, saveDocument, setPreservationWarning])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        if (isDirty && status !== 'loading' && status !== 'saving') {
+          handleSave()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleSave, isDirty, status])
 
   const statusLabel =
     status === 'saving'
