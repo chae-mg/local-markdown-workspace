@@ -252,4 +252,80 @@ describe('DatabaseService', () => {
       'Databases/프로젝트/items/first.md',
     )
   })
+
+  it('updates a typed property in the item Frontmatter', async () => {
+    const itemSource = '---\nid: item_123456\n---\n\n# 대시보드 개선\n'
+    const schemaWithNumber = {
+      ...schema,
+      properties: {
+        prop_score: {
+          id: 'prop_score',
+          name: '점수',
+          type: 'number',
+          deleted: false,
+          order: 1,
+        },
+      },
+    }
+    const { fileSystem, service } = createService({
+      entriesByPath: {
+        'Databases/프로젝트/items': [
+          {
+            kind: 'file',
+            name: 'first.md',
+            path: 'Databases/프로젝트/items/first.md',
+          },
+        ],
+      },
+      filesByPath: {
+        '.workspace/schemas/db_123456.json': JSON.stringify(schemaWithNumber),
+        'Databases/프로젝트/items/first.md': itemSource,
+      },
+    })
+
+    await expect(
+      service.updateProperty('db_123456', 'item_123456', 'prop_score', 42),
+    ).resolves.toMatchObject({ properties: { prop_score: 42 } })
+    expect(fileSystem.writeTextFile).toHaveBeenCalledWith(
+      handle,
+      'Databases/프로젝트/items/first.md',
+      expect.stringContaining('prop_score: 42'),
+    )
+  })
+
+  it('rejects values that do not match the property type', async () => {
+    const itemSource = '---\nid: item_123456\n---\n\n# 대시보드 개선\n'
+    const schemaWithNumber = {
+      ...schema,
+      properties: {
+        prop_score: {
+          id: 'prop_score',
+          name: '점수',
+          type: 'number',
+          deleted: false,
+          order: 1,
+        },
+      },
+    }
+    const { fileSystem, service } = createService({
+      entriesByPath: {
+        'Databases/프로젝트/items': [
+          {
+            kind: 'file',
+            name: 'first.md',
+            path: 'Databases/프로젝트/items/first.md',
+          },
+        ],
+      },
+      filesByPath: {
+        '.workspace/schemas/db_123456.json': JSON.stringify(schemaWithNumber),
+        'Databases/프로젝트/items/first.md': itemSource,
+      },
+    })
+
+    await expect(
+      service.updateProperty('db_123456', 'item_123456', 'prop_score', '42'),
+    ).rejects.toMatchObject({ code: 'incompatible-property-type' })
+    expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
+  })
 })

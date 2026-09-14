@@ -30,6 +30,7 @@ function createService(options?: { empty?: boolean }) {
     listDatabases: vi.fn(async () => (options?.empty ? [] : [schema])),
     loadDatabase: vi.fn(async () => schema),
     loadItems: vi.fn(async () => (options?.empty ? [] : [item])),
+    updateProperty: vi.fn(async () => item),
   } satisfies DatabaseApplicationService
 }
 

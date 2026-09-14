@@ -198,6 +198,32 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await page.getByRole('button', { name: '생성', exact: true }).click()
   await expect(page.getByText('대시보드 개선')).toBeVisible()
 
+  const statusCell = page.getByRole('combobox', {
+    name: '대시보드 개선 상태',
+  })
+  await statusCell.selectOption({ label: '예정' })
+  await expect(statusCell.locator('option:checked')).toHaveText('예정')
+  const completedCell = page.getByRole('checkbox', {
+    name: '대시보드 개선 완료 여부',
+  })
+  await completedCell.check()
+  await expect(completedCell).toBeChecked()
+
+  await page.getByRole('button', { name: '이름', exact: true }).click()
+  await page.getByRole('textbox', { name: '테이블 필터' }).fill('없는 항목')
+  await expect(
+    page.getByText('검색 조건에 맞는 항목이 없습니다.'),
+  ).toBeVisible()
+  await page.getByRole('textbox', { name: '테이블 필터' }).clear()
+  await page.getByRole('checkbox', { name: '대시보드 개선 선택' }).check()
+  await expect(page.getByText(/1개 선택/)).toBeVisible()
+  await page.getByText('열', { exact: true }).click()
+  await page.getByRole('checkbox', { name: '상태 열 표시' }).uncheck()
+  await expect(
+    page.getByRole('columnheader', { name: /상태/ }),
+  ).not.toBeVisible()
+  await page.getByRole('checkbox', { name: '상태 열 표시' }).check()
+
   const databaseFiles = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
     const workspace =
@@ -278,9 +304,17 @@ test('uses a real directory handle for the complete workspace flow', async ({
   )
   expect(databaseFiles.itemFiles).toHaveLength(1)
   expect(databaseFiles.itemFiles[0]).toMatch(/^item_[a-f0-9]+\.md$/)
-  expect(databaseFiles.itemSource).toMatch(
-    /^---\nid: item_[a-f0-9]+\n---\n\n# 대시보드 개선\n$/,
+  const storedStatus = storedProperties.find(
+    (property) => property.name === '상태',
   )
+  const storedCompleted = storedProperties.find(
+    (property) => property.name === '완료 여부',
+  )
+  expect(databaseFiles.itemSource).toContain(
+    `${storedStatus?.id}: ${storedStatus?.options?.[0]?.id}`,
+  )
+  expect(databaseFiles.itemSource).toContain(`${storedCompleted?.id}: true`)
+  expect(databaseFiles.itemSource).toMatch(/\n---\n\n# 대시보드 개선\n$/)
 
   await page
     .getByRole('button', { name: '대시보드 개선 Markdown 열기' })

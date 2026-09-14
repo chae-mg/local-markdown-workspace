@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   Database,
   FilePlus2,
   FolderKanban,
@@ -7,15 +6,20 @@ import {
   Plus,
   RefreshCw,
   Settings2,
-  Trash2,
   TriangleAlert,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { databaseService } from '@/app/composition-root'
+import { DatabaseTable } from '@/components/database/database-table'
 import { SchemaPropertyManager } from '@/components/database/schema-property-manager'
 import { Button } from '@/components/ui/button'
-import type { DatabaseItem, DatabaseSchema } from '@/domain/database'
+import type {
+  DatabaseItem,
+  DatabaseSchema,
+  PropertyDefinition,
+} from '@/domain/database'
+import type { MarkdownValue } from '@/domain/markdown'
 import type { DatabaseApplicationService } from '@/services/database.service'
 
 interface DatabaseWorkspaceProps {
@@ -46,7 +50,12 @@ export function DatabaseWorkspace({
   const [showItemForm, setShowItemForm] = useState(false)
   const [showSchemaManager, setShowSchemaManager] = useState(false)
   const [status, setStatus] = useState<
-    'loading' | 'ready' | 'creating-database' | 'creating-item' | 'deleting'
+    | 'loading'
+    | 'ready'
+    | 'creating-database'
+    | 'creating-item'
+    | 'deleting'
+    | 'updating-property'
   >('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -182,10 +191,42 @@ export function DatabaseWorkspace({
     }
   }
 
+  const handleUpdateProperty = async (
+    item: DatabaseItem,
+    property: PropertyDefinition,
+    value: MarkdownValue | undefined,
+  ) => {
+    if (!selectedDatabaseId || status !== 'ready') {
+      return
+    }
+
+    setStatus('updating-property')
+    setErrorMessage(null)
+    try {
+      const updatedItem = await service.updateProperty(
+        selectedDatabaseId,
+        item.id,
+        property.id,
+        value,
+      )
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.id === updatedItem.id ? updatedItem : candidate,
+        ),
+      )
+      await onWorkspaceChanged()
+      setStatus('ready')
+    } catch (error) {
+      setErrorMessage(messageFromError(error))
+      setStatus('ready')
+    }
+  }
+
   const isMutating =
     status === 'creating-database' ||
     status === 'creating-item' ||
-    status === 'deleting'
+    status === 'deleting' ||
+    status === 'updating-property'
 
   return (
     <section className="document-content min-h-0 flex-1 overflow-y-auto bg-stone-50/40 px-5 py-8 sm:px-8 lg:px-10">
@@ -442,41 +483,22 @@ export function DatabaseWorkspace({
                     </div>
                   </div>
                 ) : (
-                  <div className="divide-y divide-stone-100">
-                    {items.map((item) => (
-                      <article
-                        className="group flex items-center gap-3 px-5 py-4 transition hover:bg-stone-50"
-                        key={item.id}
-                      >
-                        <button
-                          aria-label={`${item.title} Markdown 열기`}
-                          className="min-w-0 flex-1 text-left outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-stone-400"
-                          onClick={() => void onOpenItem(item.path)}
-                          type="button"
-                        >
-                          <span className="flex items-center gap-2 text-sm font-medium text-stone-900">
-                            <span className="truncate">{item.title}</span>
-                            <ArrowUpRight
-                              aria-hidden="true"
-                              className="size-3.5 shrink-0 text-stone-400"
-                            />
-                          </span>
-                          <span className="mt-1 block truncate text-xs text-stone-400">
-                            {item.path.split('/').at(-1)}
-                          </span>
-                        </button>
-                        <button
-                          aria-label={`${item.title} 휴지통으로 이동`}
-                          className="grid size-8 shrink-0 place-items-center rounded-lg text-stone-400 opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-700 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-                          disabled={isMutating}
-                          onClick={() => void handleDeleteItem(item)}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="size-4" />
-                        </button>
-                      </article>
-                    ))}
-                  </div>
+                  <DatabaseTable
+                    database={selectedDatabase}
+                    disabled={isMutating}
+                    items={items}
+                    key={`${selectedDatabase.id}:${Object.values(
+                      selectedDatabase.properties,
+                    )
+                      .map(
+                        (property) =>
+                          `${property.id}:${property.order}:${property.deleted}`,
+                      )
+                      .join('|')}`}
+                    onDeleteItem={handleDeleteItem}
+                    onOpenItem={onOpenItem}
+                    onUpdateProperty={handleUpdateProperty}
+                  />
                 )}
               </>
             ) : (

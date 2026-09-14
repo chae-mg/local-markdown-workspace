@@ -1028,6 +1028,16 @@ interface UserPreferences {
 
 Database Item을 Table 형태로 수정한다.
 
+상태: **2026-09-15 완료**
+
+- TanStack Table V9 기반의 실제 Database Table을 연결했다.
+- 이름과 모든 활성 Property를 열로 렌더링하고 열 머리글 정렬, 전체 검색, 열 순서 변경, 열 숨김, 행 선택을 제공한다.
+- `Text`, `Number`, `Select`, `Multi Select`, `Checkbox`, `Date` 전용 Cell Editor를 제공한다.
+- Text와 Number는 Enter 또는 Focus 이탈 시, 나머지 타입은 값을 선택하는 즉시 Markdown Frontmatter에 저장한다.
+- 저장 전 Schema의 Property 타입과 Select Option ID를 검증하며, 잘못된 값은 파일에 기록하지 않는다.
+- 이름 열에서 각 Item의 Markdown 편집 화면을 열 수 있고 기존 휴지통 이동 흐름도 Table 안에서 유지한다.
+- 열 순서와 숨김 상태의 영속화는 다중 View 저장 구조를 도입하는 Phase 11에서 연결한다.
+
 ## TanStack Table
 
 구현:

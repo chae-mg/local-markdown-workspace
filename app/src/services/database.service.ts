@@ -3,9 +3,12 @@ import {
   DatabaseError,
   type DatabaseItem,
   type DatabaseSchema,
+  type PropertyDefinition,
+  type PropertyId,
+  SchemaError,
 } from '@/domain/database'
 import { WorkspaceError } from '@/domain/errors'
-import type { MarkdownFrontmatter } from '@/domain/markdown'
+import type { MarkdownFrontmatter, MarkdownValue } from '@/domain/markdown'
 import {
   markdownService,
   type MarkdownApplicationService,
@@ -32,6 +35,12 @@ export interface DatabaseApplicationService {
   listDatabases(): Promise<DatabaseSchema[]>
   loadDatabase(databaseId: string): Promise<DatabaseSchema>
   loadItems(databaseId: string): Promise<DatabaseItem[]>
+  updateProperty(
+    databaseId: string,
+    itemId: string,
+    propertyId: string,
+    value: MarkdownValue | undefined,
+  ): Promise<DatabaseItem>
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -118,6 +127,76 @@ function titleFromBody(body: string) {
     }
   }
   return '제목 없음'
+}
+
+function isIsoDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) {
+    return false
+  }
+
+  const [, yearSource, monthSource, daySource] = match
+  const year = Number(yearSource)
+  const month = Number(monthSource)
+  const day = Number(daySource)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
+}
+
+function validatePropertyValue(
+  property: PropertyDefinition,
+  value: MarkdownValue | undefined,
+) {
+  if (value === undefined) {
+    return value
+  }
+
+  const invalid = () => {
+    throw new SchemaError(
+      'incompatible-property-type',
+      `${property.name} 속성에 사용할 수 없는 값입니다.`,
+    )
+  }
+
+  switch (property.type) {
+    case 'text':
+      return typeof value === 'string' ? value : invalid()
+    case 'number':
+      return typeof value === 'number' && Number.isFinite(value)
+        ? value
+        : invalid()
+    case 'checkbox':
+      return typeof value === 'boolean' ? value : invalid()
+    case 'date':
+      return typeof value === 'string' && isIsoDate(value) ? value : invalid()
+    case 'select': {
+      const option = property.options.find(
+        (candidate) => candidate.id === value && !candidate.deleted,
+      )
+      return typeof value === 'string' && option ? value : invalid()
+    }
+    case 'multi_select': {
+      if (
+        !Array.isArray(value) ||
+        value.some((candidate) => typeof candidate !== 'string')
+      ) {
+        return invalid()
+      }
+      const optionIds = new Set<string>(
+        property.options
+          .filter((option) => !option.deleted)
+          .map((option) => option.id),
+      )
+      const values = [...new Set(value as string[])]
+      return values.every((candidate) => optionIds.has(candidate))
+        ? values
+        : invalid()
+    }
+  }
 }
 
 export class DatabaseService<
@@ -331,6 +410,41 @@ export class DatabaseService<
       throw new DatabaseError('invalid-item', '삭제할 Item을 찾을 수 없습니다.')
     }
     await this.trashService.moveEntryToTrash(item.path)
+  }
+
+  async updateProperty(
+    databaseId: string,
+    itemId: string,
+    propertyId: string,
+    value: MarkdownValue | undefined,
+  ) {
+    const schema = await this.loadDatabase(databaseId)
+    const property = schema.properties[propertyId as PropertyId]
+    if (!property || property.deleted) {
+      throw new SchemaError(
+        'property-not-found',
+        '수정할 속성을 찾을 수 없습니다.',
+      )
+    }
+
+    const id = assertItemId(itemId)
+    const item = (await this.loadItems(databaseId)).find(
+      (candidate) => candidate.id === id,
+    )
+    if (!item) {
+      throw new DatabaseError('invalid-item', '수정할 Item을 찾을 수 없습니다.')
+    }
+
+    const root = this.getRoot()
+    const source = await this.fileSystem.readTextFile(root, item.path)
+    const nextSource = this.markdown.updateFrontmatter(source, {
+      [property.id]: validatePropertyValue(property, value),
+    })
+    if (nextSource !== source) {
+      await this.fileSystem.writeTextFile(root, item.path, nextSource)
+    }
+    const metadata = await this.fileSystem.getFileMetadata(root, item.path)
+    return this.toItem(item.path, nextSource, metadata.lastModified)
   }
 
   private toItem(
