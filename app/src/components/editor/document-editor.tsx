@@ -82,7 +82,9 @@ export function DocumentEditor({
   const documentPath = document?.path ?? path
 
   useEffect(() => {
-    void openDocument(path)
+    const defaultEditorMode =
+      usePreferencesStore.getState().preferences.defaultEditorMode
+    void openDocument(path, defaultEditorMode)
 
     return () => useDocumentStore.getState().closeDocument()
   }, [openDocument, path])
@@ -390,7 +392,10 @@ export function DocumentEditor({
             className="mx-auto size-5 text-red-700"
           />
           <p className="mt-3 text-sm text-red-800">{errorMessage}</p>
-          <Button className="mt-4" onClick={() => void openDocument(path)}>
+          <Button
+            className="mt-4"
+            onClick={() => void openDocument(path, editorMode)}
+          >
             다시 시도
           </Button>
         </div>
@@ -647,7 +652,7 @@ export function DocumentEditor({
           ) : (
             <textarea
               aria-label="Markdown 원문"
-              className="min-h-[calc(100dvh-7.75rem)] w-full resize-none bg-[var(--ui-surface)] px-7 py-10 font-mono text-[15px] leading-7 text-[var(--ui-text)] outline-none sm:px-14"
+              className="document-content min-h-[calc(100dvh-7.75rem)] w-full resize-none bg-[var(--ui-surface)] px-7 py-10 text-[15px] leading-7 text-[var(--ui-text)] outline-none sm:px-14"
               disabled={status === 'saving' || status === 'conflict'}
               onChange={(event) => updateDraft(event.target.value)}
               onPaste={handleSourcePaste}

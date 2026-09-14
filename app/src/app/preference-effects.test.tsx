@@ -4,6 +4,7 @@ import { PreferenceEffects } from '@/app/preference-effects'
 import {
   applyVisualPreferences,
   contrastColor,
+  DOCUMENT_FONT_STACKS,
   resolveAccentColor,
   resolveTheme,
 } from '@/app/theme-preferences'
@@ -53,6 +54,7 @@ describe('preference effects', () => {
     const preferences = createDefaultPreferences()
     preferences.theme = 'dark'
     preferences.accent = { customHex: '#FACC15', preset: 'custom' }
+    preferences.documentFont = 'serif'
 
     applyVisualPreferences(preferences, false)
 
@@ -63,6 +65,9 @@ describe('preference effects', () => {
     expect(
       document.documentElement.style.getPropertyValue('--ui-accent-contrast'),
     ).toBe('#111111')
+    expect(
+      document.documentElement.style.getPropertyValue('--document-font'),
+    ).toBe(DOCUMENT_FONT_STACKS.serif)
   })
 
   it('follows system theme changes and removes its listener on unmount', () => {

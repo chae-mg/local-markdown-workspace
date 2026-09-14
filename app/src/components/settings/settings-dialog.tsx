@@ -2,9 +2,12 @@ import { RotateCcw, Settings2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { DOCUMENT_FONT_STACKS } from '@/app/theme-preferences'
 import type {
   AccentPreset,
   AutosaveDelayMs,
+  DefaultEditorMode,
+  DocumentFontPreference,
   ThemePreference,
 } from '@/domain/preferences'
 import { usePreferencesStore } from '@/stores/preferences.store'
@@ -50,6 +53,34 @@ const accentOptions: Array<{
   },
 ]
 
+const documentFontOptions: Array<{
+  label: string
+  sample: string
+  value: DocumentFontPreference
+}> = [
+  { label: 'Notion 기본', sample: '가나다 Aa 123', value: 'notion' },
+  { label: 'Pretendard', sample: '가나다 Aa 123', value: 'pretendard' },
+  { label: '명조', sample: '가나다 Aa 123', value: 'serif' },
+  { label: '고정폭', sample: '가나다 Aa 123', value: 'mono' },
+]
+
+const editorModeOptions: Array<{
+  description: string
+  label: string
+  value: DefaultEditorMode
+}> = [
+  {
+    description: '문서 형태로 바로 편집합니다.',
+    label: '에디터',
+    value: 'visual',
+  },
+  {
+    description: 'Markdown 원문으로 시작합니다.',
+    label: 'Markdown',
+    value: 'source',
+  },
+]
+
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const {
     preferences,
@@ -58,6 +89,8 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setAutosaveDelay,
     setAutosaveEnabled,
     setCustomAccent,
+    setDefaultEditorMode,
+    setDocumentFont,
     setTheme,
     storageError,
   } = usePreferencesStore()
@@ -361,6 +394,97 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           </div>
 
+          <div className="mt-6">
+            <p className="text-xs font-semibold text-[var(--ui-muted)]">문서</p>
+            <div className="mt-2 rounded-lg border border-[var(--ui-border)] px-4 py-4">
+              <div>
+                <strong className="block text-sm font-medium">문서 글꼴</strong>
+                <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
+                  편집기와 데이터베이스 내용에만 적용됩니다.
+                </p>
+              </div>
+              <div
+                aria-label="문서 글꼴"
+                className="mt-3 grid grid-cols-2 gap-2"
+                role="radiogroup"
+              >
+                {documentFontOptions.map((option) => {
+                  const isSelected = preferences.documentFont === option.value
+
+                  return (
+                    <button
+                      aria-checked={isSelected}
+                      aria-label={option.label}
+                      className={`min-w-0 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                        isSelected
+                          ? 'border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] ring-1 ring-[var(--ui-accent)]'
+                          : 'border-[var(--ui-border)] hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-sidebar)]'
+                      }`}
+                      key={option.value}
+                      onClick={() => setDocumentFont(option.value)}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="block text-xs font-medium">
+                        {option.label}
+                      </span>
+                      <span
+                        className="mt-1.5 block truncate text-sm text-[var(--ui-muted)]"
+                        style={{
+                          fontFamily: DOCUMENT_FONT_STACKS[option.value],
+                        }}
+                      >
+                        {option.sample}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-5 border-t border-[var(--ui-border)] pt-4">
+                <strong className="block text-sm font-medium">
+                  기본 편집 모드
+                </strong>
+                <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
+                  다음에 여는 문서부터 선택한 모드로 시작합니다.
+                </p>
+                <div
+                  aria-label="기본 편집 모드"
+                  className="mt-3 grid grid-cols-2 gap-2"
+                  role="radiogroup"
+                >
+                  {editorModeOptions.map((option) => {
+                    const isSelected =
+                      preferences.defaultEditorMode === option.value
+
+                    return (
+                      <button
+                        aria-checked={isSelected}
+                        aria-label={option.label}
+                        className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                          isSelected
+                            ? 'border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] ring-1 ring-[var(--ui-accent)]'
+                            : 'border-[var(--ui-border)] hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-sidebar)]'
+                        }`}
+                        key={option.value}
+                        onClick={() => setDefaultEditorMode(option.value)}
+                        role="radio"
+                        type="button"
+                      >
+                        <span className="block text-xs font-medium">
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-[11px] leading-4 text-[var(--ui-muted)]">
+                          {option.description}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {storageError ? (
             <p
               className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900"
@@ -369,10 +493,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               {storageError} 변경 내용은 현재 화면에서는 유지됩니다.
             </p>
           ) : null}
-
-          <div className="mt-5 rounded-lg bg-[var(--ui-sidebar)] px-4 py-3 text-xs leading-5 text-[var(--ui-muted)]">
-            문서 글꼴과 새 문서의 기본 편집 모드는 다음 단계에서 추가됩니다.
-          </div>
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[var(--ui-border)] px-5 py-3 sm:px-6">

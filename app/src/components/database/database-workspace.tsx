@@ -188,7 +188,7 @@ export function DatabaseWorkspace({
     status === 'deleting'
 
   return (
-    <section className="min-h-0 flex-1 overflow-y-auto bg-stone-50/40 px-5 py-8 sm:px-8 lg:px-10">
+    <section className="document-content min-h-0 flex-1 overflow-y-auto bg-stone-50/40 px-5 py-8 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>

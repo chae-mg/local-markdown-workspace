@@ -54,6 +54,19 @@ describe('SettingsDialog', () => {
     })
   })
 
+  it('changes the document font and default editor mode', async () => {
+    const user = userEvent.setup()
+    render(<SettingsDialog isOpen onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('radio', { name: '명조' }))
+    await user.click(screen.getByRole('radio', { name: 'Markdown' }))
+
+    expect(usePreferencesStore.getState().preferences).toMatchObject({
+      documentFont: 'serif',
+      defaultEditorMode: 'source',
+    })
+  })
+
   it('validates and saves a reusable custom accent color', async () => {
     const user = userEvent.setup()
     render(<SettingsDialog isOpen onClose={vi.fn()} />)

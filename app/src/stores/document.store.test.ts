@@ -99,4 +99,25 @@ describe('document store', () => {
       status: 'ready',
     })
   })
+
+  it('uses an explicit initial editor mode when opening a document', async () => {
+    const service = createService()
+    const store = createDocumentStore(service)
+
+    await store.getState().openDocument(openedDocument.path, 'source')
+
+    expect(store.getState().editorMode).toBe('source')
+  })
+
+  it('preserves the current editor mode when reloading a document', async () => {
+    const service = createService()
+    const store = createDocumentStore(service)
+
+    await store.getState().openDocument(openedDocument.path)
+    store.getState().setEditorMode('source')
+    await store.getState().reloadDocument()
+
+    expect(service.openDocument).toHaveBeenCalledTimes(2)
+    expect(store.getState().editorMode).toBe('source')
+  })
 })

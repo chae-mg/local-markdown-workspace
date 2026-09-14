@@ -18,7 +18,7 @@ export interface DocumentStore {
   closeDocument(): void
   discardDraft(): void
   forceSave(): Promise<boolean>
-  openDocument(path: string): Promise<void>
+  openDocument(path: string, editorMode?: DocumentEditorMode): Promise<void>
   reloadDocument(): Promise<void>
   saveDocument(): Promise<boolean>
   setEditorMode(mode: DocumentEditorMode): void
@@ -130,12 +130,12 @@ export function createDocumentStore(service: DocumentApplicationService) {
         return persist(true)
       },
 
-      async openDocument(path) {
+      async openDocument(path, editorMode = 'visual') {
         const requestId = ++openRequestId
         set({
           document: null,
           draftSource: '',
-          editorMode: 'visual',
+          editorMode,
           errorMessage: null,
           preservationWarning: false,
           status: 'loading',
@@ -156,9 +156,10 @@ export function createDocumentStore(service: DocumentApplicationService) {
       },
 
       async reloadDocument() {
-        const path = get().document?.path
+        const { document, editorMode } = get()
+        const path = document?.path
         if (path) {
-          await get().openDocument(path)
+          await get().openDocument(path, editorMode)
         }
       },
 

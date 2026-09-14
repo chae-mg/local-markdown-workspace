@@ -1,10 +1,20 @@
 import type {
   AccentPreset,
+  DocumentFontPreference,
   ThemePreference,
   UserPreferences,
 } from '@/domain/preferences'
 
 export type ResolvedTheme = 'light' | 'dark'
+
+export const DOCUMENT_FONT_STACKS: Record<DocumentFontPreference, string> = {
+  notion:
+    "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif",
+  pretendard:
+    "'Pretendard Variable', Pretendard, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  serif: "ui-serif, Georgia, 'Noto Serif KR', 'AppleMyungjo', Batang, serif",
+  mono: "ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', D2Coding, monospace",
+}
 
 const ACCENT_COLORS: Record<
   Exclude<AccentPreset, 'monochrome' | 'custom'>,
@@ -76,6 +86,10 @@ export function applyVisualPreferences(
   const accent = resolveAccentColor(preferences.accent, theme)
 
   root.dataset.theme = theme
+  root.style.setProperty(
+    '--document-font',
+    DOCUMENT_FONT_STACKS[preferences.documentFont],
+  )
   root.style.setProperty('--ui-accent', accent)
   root.style.setProperty('--ui-accent-contrast', contrastColor(accent))
   root.style.setProperty(

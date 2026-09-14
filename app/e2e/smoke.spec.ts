@@ -291,6 +291,14 @@ test('uses a real directory handle for the complete workspace flow', async ({
   ).toHaveValue(databaseFiles.itemSource)
 
   await page.getByRole('treeitem', { name: 'Documents' }).click()
+  const settingsDialog = page.getByRole('dialog', {
+    name: '나에게 맞게 조정하기',
+  })
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await settingsDialog.getByRole('radio', { name: '명조' }).click()
+  await settingsDialog.getByRole('radio', { name: 'Markdown' }).click()
+  await settingsDialog.getByRole('button', { name: '완료' }).click()
+
   await page
     .getByRole('button', { name: 'Documents에 새 Markdown 문서' })
     .click()
@@ -302,20 +310,29 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await expect(
     page.getByRole('heading', { name: '작업 일지.md' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: 'Markdown', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  const sourceEditor = page.getByRole('textbox', { name: 'Markdown 원문' })
+  await expect(sourceEditor).toBeVisible()
+  expect(
+    await sourceEditor.evaluate(
+      (element) => window.getComputedStyle(element).fontFamily,
+    ),
+  ).toContain('Georgia')
 
   await page.getByRole('button', { name: '설정', exact: true }).click()
-  const settingsDialog = page.getByRole('dialog', {
-    name: '나에게 맞게 조정하기',
-  })
+  await settingsDialog.getByRole('radio', { name: '에디터' }).click()
   await settingsDialog
     .getByRole('checkbox', { name: '자동 저장 사용' })
     .uncheck()
   await settingsDialog.getByRole('button', { name: '완료' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Markdown', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(sourceEditor).toBeVisible()
 
-  await page
-    .getByRole('textbox', { name: 'Markdown 원문' })
-    .fill('# 작업 일지\n\n첫 기록')
+  await sourceEditor.fill('# 작업 일지\n\n첫 기록')
   await expect(page.getByText('저장 안 됨')).toBeVisible()
   await page.waitForTimeout(1200)
 
@@ -333,7 +350,6 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await page.keyboard.press('Control+s')
   await expect(page.getByText('저장됨')).toBeVisible()
 
-  const sourceEditor = page.getByRole('textbox', { name: 'Markdown 원문' })
   await sourceEditor.fill('# 이동 취소 확인')
   await page.getByRole('button', { name: '데이터베이스' }).click()
   const unsavedDialog = page.getByRole('dialog', {
