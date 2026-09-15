@@ -231,7 +231,32 @@ test('uses a real directory handle for the complete workspace flow', async ({
   ).not.toBeVisible()
   await page.getByRole('checkbox', { name: '상태 열 표시' }).check()
 
-  await page.getByRole('button', { name: '칸반 보기' }).click()
+  await page.getByRole('button', { name: 'View 설정' }).click()
+  const viewNameInput = page.getByRole('textbox', { name: 'View 이름 변경' })
+  await viewNameInput.fill('기본 테이블')
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '기본 테이블', exact: true }),
+  ).toBeVisible()
+  await page
+    .getByRole('combobox', { name: '필터 속성' })
+    .selectOption({ label: '완료 여부' })
+  await page.getByRole('button', { name: '추가', exact: true }).first().click()
+  await expect(page.getByText(/완료 여부 체크됨/)).toBeVisible()
+  await page.getByRole('combobox', { name: '정렬 방향' }).selectOption('desc')
+  await page.getByRole('button', { name: '추가', exact: true }).last().click()
+  await expect(page.getByText(/이름 · 내림차순/)).toBeVisible()
+  await page.getByRole('button', { name: 'View 설정' }).click()
+
+  await page.getByRole('button', { name: '새 View 추가' }).click()
+  await page.getByRole('textbox', { name: '새 View 이름' }).fill('상태 보드')
+  await page
+    .getByRole('combobox', { name: '새 View 타입' })
+    .selectOption('kanban')
+  await page.getByRole('button', { name: '생성', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '상태 보드', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
   const groupBySelect = page.getByRole('combobox', {
     name: '칸반 그룹 속성',
   })
@@ -258,7 +283,7 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await page.mouse.up()
   await expect(doingColumn.getByText('대시보드 개선')).toBeVisible()
 
-  await page.getByRole('button', { name: '테이블 보기' }).click()
+  await page.getByRole('button', { name: '기본 테이블', exact: true }).click()
   await expect(
     page
       .getByRole('combobox', { name: '대시보드 개선 상태' })
@@ -271,6 +296,7 @@ test('uses a real directory handle for the complete workspace flow', async ({
       await originPrivateRoot.getDirectoryHandle('E2E Workspace')
     const metadata = await workspace.getDirectoryHandle('.workspace')
     const schemas = await metadata.getDirectoryHandle('schemas')
+    const viewsDirectory = await metadata.getDirectoryHandle('views')
     const schemaFiles: string[] = []
     for await (const entry of schemas.values()) {
       schemaFiles.push(entry.name)
@@ -294,6 +320,30 @@ test('uses a real directory handle for the complete workspace flow', async ({
         }
       >
     }
+    const viewFiles: string[] = []
+    const views: Array<{
+      databaseId?: string
+      filters?: Array<{
+        operator?: string
+        propertyId?: string
+        value?: unknown
+      }>
+      groupBy?: string
+      hiddenProperties?: string[]
+      id?: string
+      name?: string
+      propertyOrder?: string[]
+      sorts?: Array<{ direction?: string; propertyId?: string }>
+      type?: string
+      version?: number
+    }> = []
+    for await (const entry of viewsDirectory.values()) {
+      viewFiles.push(entry.name)
+      const file = await (
+        await viewsDirectory.getFileHandle(entry.name)
+      ).getFile()
+      views.push(JSON.parse(await file.text()))
+    }
     const databases = await workspace.getDirectoryHandle('Databases')
     const board = await databases.getDirectoryHandle('업무 보드')
     const items = await board.getDirectoryHandle('items')
@@ -309,6 +359,8 @@ test('uses a real directory handle for the complete workspace flow', async ({
       itemSource: await itemSource.text(),
       schema,
       schemaFiles,
+      viewFiles,
+      views,
     }
   })
 
@@ -363,6 +415,48 @@ test('uses a real directory handle for the complete workspace flow', async ({
   )
   expect(databaseFiles.itemSource).toContain(`${storedCompleted?.id}: true`)
   expect(databaseFiles.itemSource).toMatch(/\n---\n\n# 대시보드 개선\n$/)
+
+  expect(databaseFiles.viewFiles).toHaveLength(2)
+  expect(databaseFiles.viewFiles).toEqual(
+    expect.arrayContaining([
+      expect.stringMatching(/^view_[a-f0-9]+\.json$/),
+      expect.stringMatching(/^view_[a-f0-9]+\.json$/),
+    ]),
+  )
+  const storedTableView = databaseFiles.views.find(
+    (view) => view.name === '기본 테이블',
+  )
+  const storedKanbanView = databaseFiles.views.find(
+    (view) => view.name === '상태 보드',
+  )
+  expect(storedTableView).toMatchObject({
+    databaseId: databaseFiles.schema.id,
+    filters: [
+      {
+        operator: 'is_true',
+        propertyId: storedCompleted?.id,
+      },
+    ],
+    hiddenProperties: [],
+    name: '기본 테이블',
+    sorts: [{ direction: 'desc', propertyId: 'title' }],
+    type: 'table',
+    version: 1,
+  })
+  expect(storedTableView?.propertyOrder).toEqual([
+    storedCompleted?.id,
+    storedStatus?.id,
+  ])
+  expect(storedKanbanView).toMatchObject({
+    databaseId: databaseFiles.schema.id,
+    filters: [],
+    groupBy: storedStatus?.id,
+    hiddenProperties: [],
+    name: '상태 보드',
+    sorts: [],
+    type: 'kanban',
+    version: 1,
+  })
 
   await page
     .getByRole('button', { name: '대시보드 개선 Markdown 열기' })
@@ -446,6 +540,12 @@ test('uses a real directory handle for the complete workspace flow', async ({
   await expect(
     page.getByRole('heading', { name: '데이터베이스' }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '기본 테이블', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'View 설정' }).click()
+  await expect(page.getByText(/완료 여부 체크됨/)).toBeVisible()
+  await page.getByRole('button', { name: 'View 설정' }).click()
   await page.getByRole('treeitem', { name: '작업 일지.md' }).click()
   await page.getByRole('button', { name: 'Markdown', exact: true }).click()
   await expect(

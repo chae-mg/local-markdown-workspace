@@ -12,8 +12,12 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
-import { databaseService } from '@/app/composition-root'
+import {
+  databaseService,
+  viewService as defaultViewService,
+} from '@/app/composition-root'
 import { DatabaseTable } from '@/components/database/database-table'
+import { DatabaseViewToolbar } from '@/components/database/database-view-toolbar'
 import { KanbanBoard } from '@/components/database/kanban-board'
 import { SchemaPropertyManager } from '@/components/database/schema-property-manager'
 import { Button } from '@/components/ui/button'
@@ -22,13 +26,20 @@ import type {
   DatabaseSchema,
   PropertyDefinition,
 } from '@/domain/database'
+import {
+  applyDatabaseView,
+  type DatabaseView,
+  type DatabaseViewType,
+} from '@/domain/database-view'
 import type { MarkdownValue } from '@/domain/markdown'
 import type { DatabaseApplicationService } from '@/services/database.service'
+import type { ViewApplicationService } from '@/services/view.service'
 
 interface DatabaseWorkspaceProps {
   onOpenItem(path: string): Promise<void> | void
   onWorkspaceChanged(): Promise<void> | void
   service?: DatabaseApplicationService
+  viewApplicationService?: ViewApplicationService
 }
 
 function messageFromError(error: unknown) {
@@ -41,18 +52,20 @@ export function DatabaseWorkspace({
   onOpenItem,
   onWorkspaceChanged,
   service = databaseService,
+  viewApplicationService = defaultViewService,
 }: DatabaseWorkspaceProps) {
   const [databases, setDatabases] = useState<DatabaseSchema[]>([])
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(
     null,
   )
   const [items, setItems] = useState<DatabaseItem[]>([])
+  const [views, setViews] = useState<DatabaseView[]>([])
+  const [selectedViewId, setSelectedViewId] = useState<string | null>(null)
   const [databaseName, setDatabaseName] = useState('')
   const [itemTitle, setItemTitle] = useState('')
   const [showDatabaseForm, setShowDatabaseForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
   const [showSchemaManager, setShowSchemaManager] = useState(false)
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table')
   const [status, setStatus] = useState<
     | 'loading'
     | 'ready'
@@ -60,26 +73,55 @@ export function DatabaseWorkspace({
     | 'creating-item'
     | 'deleting'
     | 'updating-property'
+    | 'updating-view'
   >('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const selectedDatabase =
     databases.find((database) => database.id === selectedDatabaseId) ?? null
+  const selectedView =
+    views.find((view) => view.id === selectedViewId) ?? views[0] ?? null
+  const displayedItems =
+    selectedDatabase && selectedView
+      ? applyDatabaseView(items, selectedDatabase, selectedView)
+      : items
 
-  const loadItems = useCallback(
+  const loadDatabaseContent = useCallback(
     async (databaseId: string) => {
       setStatus('loading')
       setErrorMessage(null)
       try {
-        setItems(await service.loadItems(databaseId))
+        const [loadedItems, storedViews] = await Promise.all([
+          service.loadItems(databaseId),
+          viewApplicationService.listViews(databaseId),
+        ])
+        const loadedViews =
+          storedViews.length > 0
+            ? storedViews
+            : [
+                await viewApplicationService.createView(
+                  databaseId,
+                  '전체 항목',
+                  'table',
+                ),
+              ]
+        setItems(loadedItems)
+        setViews(loadedViews)
+        setSelectedViewId((current) =>
+          loadedViews.some((view) => view.id === current)
+            ? current
+            : (loadedViews[0]?.id ?? null),
+        )
         setStatus('ready')
       } catch (error) {
         setItems([])
+        setViews([])
+        setSelectedViewId(null)
         setErrorMessage(messageFromError(error))
         setStatus('ready')
       }
     },
-    [service],
+    [service, viewApplicationService],
   )
 
   const loadDatabases = useCallback(async () => {
@@ -95,16 +137,38 @@ export function DatabaseWorkspace({
         null
       setSelectedDatabaseId(nextSelectedId)
       if (nextSelectedId) {
-        setItems(await service.loadItems(nextSelectedId))
+        const [loadedItems, storedViews] = await Promise.all([
+          service.loadItems(nextSelectedId),
+          viewApplicationService.listViews(nextSelectedId),
+        ])
+        const loadedViews =
+          storedViews.length > 0
+            ? storedViews
+            : [
+                await viewApplicationService.createView(
+                  nextSelectedId,
+                  '전체 항목',
+                  'table',
+                ),
+              ]
+        setItems(loadedItems)
+        setViews(loadedViews)
+        setSelectedViewId((current) =>
+          loadedViews.some((view) => view.id === current)
+            ? current
+            : (loadedViews[0]?.id ?? null),
+        )
       } else {
         setItems([])
+        setViews([])
+        setSelectedViewId(null)
       }
       setStatus('ready')
     } catch (error) {
       setErrorMessage(messageFromError(error))
       setStatus('ready')
     }
-  }, [selectedDatabaseId, service])
+  }, [selectedDatabaseId, service, viewApplicationService])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadDatabases(), 0)
@@ -119,8 +183,9 @@ export function DatabaseWorkspace({
     }
     setSelectedDatabaseId(databaseId)
     setShowSchemaManager(false)
-    setViewMode('table')
-    void loadItems(databaseId)
+    setViews([])
+    setSelectedViewId(null)
+    void loadDatabaseContent(databaseId)
   }
 
   const handleCreateDatabase = async (event: FormEvent) => {
@@ -141,7 +206,13 @@ export function DatabaseWorkspace({
       setSelectedDatabaseId(database.id)
       setItems([])
       setShowSchemaManager(false)
-      setViewMode('table')
+      const view = await viewApplicationService.createView(
+        database.id,
+        '전체 항목',
+        'table',
+      )
+      setViews([view])
+      setSelectedViewId(view.id)
       setDatabaseName('')
       setShowDatabaseForm(false)
       await onWorkspaceChanged()
@@ -228,11 +299,91 @@ export function DatabaseWorkspace({
     }
   }
 
+  const handleCreateView = async (name: string, type: DatabaseViewType) => {
+    if (!selectedDatabaseId || status !== 'ready') {
+      return
+    }
+    setStatus('updating-view')
+    setErrorMessage(null)
+    try {
+      const view = await viewApplicationService.createView(
+        selectedDatabaseId,
+        name,
+        type,
+      )
+      setViews((current) => [...current, view])
+      setSelectedViewId(view.id)
+      setStatus('ready')
+    } catch (error) {
+      setErrorMessage(messageFromError(error))
+      setStatus('ready')
+    }
+  }
+
+  const handleUpdateView = async (
+    view: DatabaseView,
+    patch: Partial<DatabaseView>,
+  ) => {
+    if (status !== 'ready') {
+      return
+    }
+    setStatus('updating-view')
+    setErrorMessage(null)
+    const nextView = { ...view, ...patch }
+    setViews((current) =>
+      current.map((candidate) =>
+        candidate.id === nextView.id ? nextView : candidate,
+      ),
+    )
+    try {
+      const updatedView = await viewApplicationService.updateView(nextView)
+      setViews((current) =>
+        current.map((candidate) =>
+          candidate.id === updatedView.id ? updatedView : candidate,
+        ),
+      )
+      setStatus('ready')
+    } catch (error) {
+      setViews((current) =>
+        current.map((candidate) =>
+          candidate.id === view.id ? view : candidate,
+        ),
+      )
+      setErrorMessage(messageFromError(error))
+      setStatus('ready')
+    }
+  }
+
+  const handleDeleteView = async (view: DatabaseView) => {
+    if (
+      status !== 'ready' ||
+      views.length <= 1 ||
+      !window.confirm(`“${view.name}” View를 삭제할까요?`)
+    ) {
+      return
+    }
+    setStatus('updating-view')
+    setErrorMessage(null)
+    try {
+      await viewApplicationService.deleteView(view.id)
+      const remainingViews = views.filter(
+        (candidate) => candidate.id !== view.id,
+      )
+      setViews(remainingViews)
+      setSelectedViewId(remainingViews[0]?.id ?? null)
+      setStatus('ready')
+    } catch (error) {
+      setErrorMessage(messageFromError(error))
+      setStatus('ready')
+    }
+  }
+
   const isMutating =
     status === 'creating-database' ||
     status === 'creating-item' ||
     status === 'deleting' ||
-    status === 'updating-property'
+    status === 'updating-property' ||
+    status === 'updating-view'
 
   return (
     <section className="document-content min-h-0 flex-1 overflow-y-auto bg-stone-50/40 px-5 py-8 sm:px-8 lg:px-10">
@@ -390,14 +541,20 @@ export function DatabaseWorkspace({
                     >
                       <button
                         aria-label="테이블 보기"
-                        aria-pressed={viewMode === 'table'}
+                        aria-pressed={selectedView?.type === 'table'}
                         className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition ${
-                          viewMode === 'table'
+                          selectedView?.type === 'table'
                             ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
                             : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
                         }`}
-                        disabled={isMutating}
-                        onClick={() => setViewMode('table')}
+                        disabled={isMutating || !selectedView}
+                        onClick={() =>
+                          selectedView
+                            ? void handleUpdateView(selectedView, {
+                                type: 'table',
+                              })
+                            : undefined
+                        }
                         type="button"
                       >
                         <Table2 aria-hidden="true" className="size-3.5" />
@@ -405,14 +562,20 @@ export function DatabaseWorkspace({
                       </button>
                       <button
                         aria-label="칸반 보기"
-                        aria-pressed={viewMode === 'kanban'}
+                        aria-pressed={selectedView?.type === 'kanban'}
                         className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition ${
-                          viewMode === 'kanban'
+                          selectedView?.type === 'kanban'
                             ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
                             : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
                         }`}
-                        disabled={isMutating}
-                        onClick={() => setViewMode('kanban')}
+                        disabled={isMutating || !selectedView}
+                        onClick={() =>
+                          selectedView
+                            ? void handleUpdateView(selectedView, {
+                                type: 'kanban',
+                              })
+                            : undefined
+                        }
                         type="button"
                       >
                         <LayoutDashboard
@@ -454,6 +617,19 @@ export function DatabaseWorkspace({
                         ),
                       )
                     }
+                  />
+                ) : null}
+
+                {selectedView ? (
+                  <DatabaseViewToolbar
+                    database={selectedDatabase}
+                    disabled={isMutating}
+                    onCreate={handleCreateView}
+                    onDelete={handleDeleteView}
+                    onSelect={setSelectedViewId}
+                    onUpdate={handleUpdateView}
+                    selectedView={selectedView}
+                    views={views}
                   />
                 ) : null}
 
@@ -510,6 +686,10 @@ export function DatabaseWorkspace({
                       항목을 불러오는 중
                     </span>
                   </div>
+                ) : !selectedView ? (
+                  <div className="grid min-h-72 place-items-center text-sm text-stone-500">
+                    View를 준비하는 중입니다.
+                  </div>
                 ) : items.length === 0 ? (
                   <div className="grid min-h-72 place-items-center px-5 text-center">
                     <div>
@@ -527,14 +707,18 @@ export function DatabaseWorkspace({
                       </p>
                     </div>
                   </div>
-                ) : viewMode === 'kanban' ? (
+                ) : selectedView.type === 'kanban' ? (
                   <KanbanBoard
                     database={selectedDatabase}
                     disabled={isMutating}
-                    items={items}
-                    key={`kanban:${selectedDatabase.id}:${JSON.stringify(
-                      selectedDatabase.properties,
-                    )}`}
+                    groupById={selectedView.groupBy}
+                    items={displayedItems}
+                    key={`kanban:${selectedView.id}:${JSON.stringify(
+                      selectedView,
+                    )}:${JSON.stringify(selectedDatabase.properties)}`}
+                    onGroupByChange={(groupBy) =>
+                      handleUpdateView(selectedView, { groupBy })
+                    }
                     onMoveItem={handleUpdateProperty}
                     onOpenItem={onOpenItem}
                   />
@@ -542,18 +726,17 @@ export function DatabaseWorkspace({
                   <DatabaseTable
                     database={selectedDatabase}
                     disabled={isMutating}
-                    items={items}
-                    key={`${selectedDatabase.id}:${Object.values(
+                    items={displayedItems}
+                    key={`table:${selectedView.id}:${JSON.stringify(
                       selectedDatabase.properties,
-                    )
-                      .map(
-                        (property) =>
-                          `${property.id}:${property.order}:${property.deleted}`,
-                      )
-                      .join('|')}`}
+                    )}`}
                     onDeleteItem={handleDeleteItem}
                     onOpenItem={onOpenItem}
                     onUpdateProperty={handleUpdateProperty}
+                    onViewChange={(patch) =>
+                      handleUpdateView(selectedView, patch)
+                    }
+                    view={selectedView}
                   />
                 )}
               </>

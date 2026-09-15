@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { vi } from 'vitest'
 
 import { DatabaseTable } from '@/components/database/database-table'
@@ -8,6 +9,7 @@ import type {
   DatabaseSchema,
   PropertyDefinition,
 } from '@/domain/database'
+import type { DatabaseView } from '@/domain/database-view'
 import type { MarkdownValue } from '@/domain/markdown'
 
 const schema: DatabaseSchema = {
@@ -66,6 +68,18 @@ const schema: DatabaseSchema = {
   },
 }
 
+const defaultView: DatabaseView = {
+  version: 1,
+  id: 'view_table',
+  databaseId: schema.id,
+  name: '전체 항목',
+  type: 'table',
+  filters: [],
+  sorts: [],
+  hiddenProperties: [],
+  propertyOrder: Object.keys(schema.properties),
+}
+
 const firstItem: DatabaseItem = {
   id: 'item_first',
   path: 'Databases/프로젝트/items/item_first.md',
@@ -92,18 +106,29 @@ function renderTable(
       property: PropertyDefinition,
       value: MarkdownValue | undefined,
     ): void
+    onViewChange?(patch: Partial<DatabaseView>): void
+    view?: DatabaseView
   } = {},
 ) {
   const onUpdateProperty = options.onUpdateProperty ?? vi.fn()
-  render(
-    <DatabaseTable
-      database={schema}
-      items={options.items ?? [firstItem, secondItem]}
-      onDeleteItem={vi.fn()}
-      onOpenItem={vi.fn()}
-      onUpdateProperty={onUpdateProperty}
-    />,
-  )
+  function ControlledTable() {
+    const [view, setView] = useState(options.view ?? defaultView)
+    return (
+      <DatabaseTable
+        database={schema}
+        items={options.items ?? [firstItem, secondItem]}
+        onDeleteItem={vi.fn()}
+        onOpenItem={vi.fn()}
+        onUpdateProperty={onUpdateProperty}
+        onViewChange={(patch) => {
+          options.onViewChange?.(patch)
+          setView((current) => ({ ...current, ...patch }))
+        }}
+        view={view}
+      />
+    )
+  }
+  render(<ControlledTable />)
   return { onUpdateProperty }
 }
 
@@ -169,7 +194,8 @@ describe('DatabaseTable', () => {
 
   it('sorts, filters, selects, hides, and reorders table columns', async () => {
     const user = userEvent.setup()
-    renderTable()
+    const onViewChange = vi.fn()
+    renderTable({ onViewChange, view: defaultView })
 
     await user.click(screen.getByRole('button', { name: '이름' }))
     const itemLinks = screen.getAllByRole('button', { name: /Markdown 열기$/ })
@@ -204,6 +230,17 @@ describe('DatabaseTable', () => {
       .map((header) => within(header).queryByRole('button')?.textContent ?? '')
     expect(headerText.indexOf('완료 여부')).toBeLessThan(
       headerText.indexOf('태그'),
+    )
+    expect(onViewChange).toHaveBeenCalledWith({
+      sorts: [{ propertyId: 'title', direction: 'asc' }],
+    })
+    expect(onViewChange).toHaveBeenCalledWith({
+      hiddenProperties: ['prop_status'],
+    })
+    expect(onViewChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        propertyOrder: expect.arrayContaining(['prop_done', 'prop_tags']),
+      }),
     )
   })
 })

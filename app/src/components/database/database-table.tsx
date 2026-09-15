@@ -35,6 +35,7 @@ import type {
   PropertyDefinition,
   SelectOptionId,
 } from '@/domain/database'
+import type { DatabaseView } from '@/domain/database-view'
 import type { MarkdownValue } from '@/domain/markdown'
 
 interface DatabaseTableProps {
@@ -43,11 +44,13 @@ interface DatabaseTableProps {
   items: DatabaseItem[]
   onDeleteItem(item: DatabaseItem): Promise<void> | void
   onOpenItem(path: string): Promise<void> | void
+  onViewChange(patch: Partial<DatabaseView>): Promise<void> | void
   onUpdateProperty(
     item: DatabaseItem,
     property: PropertyDefinition,
     value: MarkdownValue | undefined,
   ): Promise<void> | void
+  view: DatabaseView
 }
 
 const features = tableFeatures({
@@ -383,6 +386,8 @@ export function DatabaseTable({
   onDeleteItem,
   onOpenItem,
   onUpdateProperty,
+  onViewChange,
+  view,
 }: DatabaseTableProps) {
   const properties = useMemo(() => activeProperties(database), [database])
   const columns = useMemo(
@@ -463,21 +468,66 @@ export function DatabaseTable({
       ]),
     [disabled, onDeleteItem, onOpenItem, onUpdateProperty, properties],
   )
-  const initialColumnOrder = useMemo(
-    () => [
+  const initialColumnOrder = useMemo(() => {
+    const propertyIds = new Set<string>(
+      properties.map((property) => property.id),
+    )
+    const configuredOrder = view.propertyOrder.filter((propertyId) =>
+      propertyIds.has(propertyId),
+    )
+    return [
       'selection',
       'title',
-      ...properties.map((property) => property.id),
+      ...configuredOrder,
+      ...properties
+        .map((property) => property.id)
+        .filter((propertyId) => !configuredOrder.includes(propertyId)),
       'actions',
-    ],
-    [properties],
+    ]
+  }, [properties, view])
+  const columnVisibility = Object.fromEntries(
+    view.hiddenProperties.map((propertyId) => [propertyId, false]),
   )
+  const sorting = view.sorts.map((sort) => ({
+    id: sort.propertyId,
+    desc: sort.direction === 'desc',
+  }))
   const table = useTable({
     columns,
     data: items,
     features,
     getRowId: (item) => item.id,
-    initialState: { columnOrder: initialColumnOrder },
+    state: {
+      columnOrder: initialColumnOrder,
+      columnVisibility,
+      sorting,
+    },
+    onColumnOrderChange: (updater) => {
+      const nextOrder =
+        typeof updater === 'function' ? updater(initialColumnOrder) : updater
+      void onViewChange({
+        propertyOrder: nextOrder.filter((id) => !fixedColumnIds.has(id)),
+      })
+    },
+    onColumnVisibilityChange: (updater) => {
+      const nextVisibility =
+        typeof updater === 'function' ? updater(columnVisibility) : updater
+      void onViewChange({
+        hiddenProperties: properties
+          .map((property) => property.id)
+          .filter((propertyId) => nextVisibility[propertyId] === false),
+      })
+    },
+    onSortingChange: (updater) => {
+      const nextSorting =
+        typeof updater === 'function' ? updater(sorting) : updater
+      void onViewChange({
+        sorts: nextSorting.map((sort) => ({
+          propertyId: sort.id,
+          direction: sort.desc ? 'desc' : 'asc',
+        })),
+      })
+    },
   })
   const selectedCount = table.getSelectedRowModel().rows.length
   const filteredRows = table.getRowModel().rows
@@ -504,6 +554,17 @@ export function DatabaseTable({
       order[currentIndex],
     ]
     table.setColumnOrder(order)
+  }
+
+  const toggleColumnVisibility = (columnId: string, visible: boolean) => {
+    table.getColumn(columnId)?.toggleVisibility(visible)
+  }
+
+  const toggleSorting = (columnId: string, current: false | 'asc' | 'desc') => {
+    const next = current === false ? 'asc' : current === 'asc' ? 'desc' : false
+    table.setSorting(
+      next === false ? [] : [{ id: columnId, desc: next === 'desc' }],
+    )
   }
 
   return (
@@ -559,7 +620,9 @@ export function DatabaseTable({
                       aria-label={`${String(column.columnDef.header)} 열 표시`}
                       checked={column.getIsVisible()}
                       className="size-4 accent-[var(--ui-accent)]"
-                      onChange={column.getToggleVisibilityHandler()}
+                      onChange={(event) =>
+                        toggleColumnVisibility(column.id, event.target.checked)
+                      }
                       type="checkbox"
                     />
                     <span className="min-w-0 flex-1 truncate text-xs">
@@ -614,7 +677,9 @@ export function DatabaseTable({
                       {header.isPlaceholder ? null : header.column.getCanSort() ? (
                         <button
                           className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left hover:text-[var(--ui-text)]"
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={() =>
+                            toggleSorting(header.column.id, sorted)
+                          }
                           type="button"
                         >
                           <table.FlexRender header={header} />

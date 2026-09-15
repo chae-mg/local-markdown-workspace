@@ -1132,6 +1132,16 @@ Table ↔ Kanban 간 데이터 불일치가 없어야 한다.
 
 Schema와 View를 완전히 분리한다.
 
+상태: **2026-09-15 완료**
+
+- Database별 View를 `.workspace/views/view_*.json`에 Schema와 분리해 저장한다.
+- 한 Database에서 여러 Table/Kanban View를 생성·전환·이름 변경·삭제할 수 있다.
+- 각 View는 `filters`, `sorts`, `propertyOrder`, `hiddenProperties`, `groupBy`를 독립적으로 유지한다.
+- Table 머리글 정렬과 열 순서·숨김 변경을 현재 View에 즉시 저장한다.
+- 공통 View 설정에서 Property 타입별 Filter와 다중 Sort 규칙을 추가·제거할 수 있다.
+- Kanban의 Select `groupBy` 변경을 현재 View에 저장하며, 재진입 시 저장된 설정을 복원한다.
+- 기존 Workspace에 `views` 폴더가 없어도 첫 Database 진입 시 기본 Table View를 안전하게 생성한다.
+
 ## 기능
 
 - View 생성

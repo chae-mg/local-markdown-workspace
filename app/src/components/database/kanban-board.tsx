@@ -36,7 +36,9 @@ interface KanbanColumn {
 interface KanbanBoardProps {
   database: DatabaseSchema
   disabled?: boolean
+  groupById?: string
   items: DatabaseItem[]
+  onGroupByChange?(propertyId: string): Promise<void> | void
   onMoveItem(
     item: DatabaseItem,
     property: SelectPropertyDefinition,
@@ -173,7 +175,9 @@ function KanbanColumnView({
 export function KanbanBoard({
   database,
   disabled = false,
+  groupById: configuredGroupById,
   items,
+  onGroupByChange,
   onMoveItem,
   onOpenItem,
 }: KanbanBoardProps) {
@@ -188,7 +192,9 @@ export function KanbanBoard({
     [database],
   )
   const [groupById, setGroupById] = useState<string>(
-    selectProperties[0]?.id ?? '',
+    selectProperties.some((property) => property.id === configuredGroupById)
+      ? (configuredGroupById ?? '')
+      : (selectProperties[0]?.id ?? ''),
   )
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
   const sensors = useSensors(
@@ -274,7 +280,10 @@ export function KanbanBoard({
             aria-label="칸반 그룹 속성"
             className="h-8 rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2 text-xs text-[var(--ui-text)] outline-none focus:border-[var(--ui-accent)]"
             disabled={disabled}
-            onChange={(event) => setGroupById(event.target.value)}
+            onChange={(event) => {
+              setGroupById(event.target.value)
+              void onGroupByChange?.(event.target.value)
+            }}
             value={groupBy.id}
           >
             {selectProperties.map((property) => (
