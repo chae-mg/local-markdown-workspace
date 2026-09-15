@@ -1086,6 +1086,15 @@ Table에서 값을 바꾸면 해당 `.md` Frontmatter가 즉시 변경된다.
 
 Select Property 기준 Kanban을 제공한다.
 
+상태: **2026-09-15 완료**
+
+- Table과 Kanban 보기 전환을 추가하고 두 View가 같은 Item 상태를 직접 공유하도록 연결했다.
+- 활성 Select Property를 `groupBy`로 선택할 수 있으며, 활성 Option별 열과 값이 없거나 삭제된 Option을 위한 `미지정` 열을 제공한다.
+- dnd-kit의 Pointer/Keyboard Sensor, Drag Overlay, Droppable Column을 사용해 카드 이동을 구현했다.
+- 카드 이동은 기존 `DatabaseService.updateProperty()`를 거쳐 Markdown Frontmatter를 즉시 변경한다.
+- 카드에서 Item Markdown을 기존 편집기로 바로 열 수 있다.
+- View 종류와 `groupBy` 선택의 영속화는 Phase 11 View Engine에서 연결한다.
+
 ## dnd-kit
 
 구현:

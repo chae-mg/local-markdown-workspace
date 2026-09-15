@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 8 Schema Engine까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 10 Kanban View까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -144,6 +144,11 @@ Phase 0 개발 환경부터 Phase 8 Schema Engine까지 구현했습니다.
 - Property 이름 변경·순서 이동과 ID 안정성 유지
 - Property 및 Select Option Soft Delete·복원
 - Select Option 생성·이름 변경과 Option ID 기반 저장
+- TanStack Table V9 기반 Database Table 정렬·검색·열 순서·숨김·행 선택
+- Property 타입별 Cell Editor와 Markdown Frontmatter 즉시 저장
+- Select Property 기준 Kanban Grouping과 `미지정` 열
+- dnd-kit 기반 카드 이동, Drag Overlay, Pointer/Keyboard 조작
+- Kanban 이동 결과의 Markdown Frontmatter 및 Table View 동기화
 - 기존 Item 값을 검사해 호환되지 않는 Property 타입 변경 차단
 - Schema 변경 시 Item Markdown Frontmatter와 본문 미수정
 - 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원

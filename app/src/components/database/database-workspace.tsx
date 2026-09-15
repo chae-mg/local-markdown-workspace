@@ -2,16 +2,19 @@ import {
   Database,
   FilePlus2,
   FolderKanban,
+  LayoutDashboard,
   LoaderCircle,
   Plus,
   RefreshCw,
   Settings2,
+  Table2,
   TriangleAlert,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { databaseService } from '@/app/composition-root'
 import { DatabaseTable } from '@/components/database/database-table'
+import { KanbanBoard } from '@/components/database/kanban-board'
 import { SchemaPropertyManager } from '@/components/database/schema-property-manager'
 import { Button } from '@/components/ui/button'
 import type {
@@ -49,6 +52,7 @@ export function DatabaseWorkspace({
   const [showDatabaseForm, setShowDatabaseForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
   const [showSchemaManager, setShowSchemaManager] = useState(false)
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table')
   const [status, setStatus] = useState<
     | 'loading'
     | 'ready'
@@ -115,6 +119,7 @@ export function DatabaseWorkspace({
     }
     setSelectedDatabaseId(databaseId)
     setShowSchemaManager(false)
+    setViewMode('table')
     void loadItems(databaseId)
   }
 
@@ -136,6 +141,7 @@ export function DatabaseWorkspace({
       setSelectedDatabaseId(database.id)
       setItems([])
       setShowSchemaManager(false)
+      setViewMode('table')
       setDatabaseName('')
       setShowDatabaseForm(false)
       await onWorkspaceChanged()
@@ -377,6 +383,45 @@ export function DatabaseWorkspace({
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <div
+                      aria-label="데이터베이스 보기"
+                      className="flex rounded-lg border border-[var(--ui-border)] bg-[var(--ui-sidebar)] p-0.5"
+                      role="group"
+                    >
+                      <button
+                        aria-label="테이블 보기"
+                        aria-pressed={viewMode === 'table'}
+                        className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition ${
+                          viewMode === 'table'
+                            ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
+                            : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
+                        }`}
+                        disabled={isMutating}
+                        onClick={() => setViewMode('table')}
+                        type="button"
+                      >
+                        <Table2 aria-hidden="true" className="size-3.5" />
+                        테이블
+                      </button>
+                      <button
+                        aria-label="칸반 보기"
+                        aria-pressed={viewMode === 'kanban'}
+                        className={`flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition ${
+                          viewMode === 'kanban'
+                            ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-sm'
+                            : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
+                        }`}
+                        disabled={isMutating}
+                        onClick={() => setViewMode('kanban')}
+                        type="button"
+                      >
+                        <LayoutDashboard
+                          aria-hidden="true"
+                          className="size-3.5"
+                        />
+                        칸반
+                      </button>
+                    </div>
                     <Button
                       aria-expanded={showSchemaManager}
                       disabled={isMutating}
@@ -482,6 +527,17 @@ export function DatabaseWorkspace({
                       </p>
                     </div>
                   </div>
+                ) : viewMode === 'kanban' ? (
+                  <KanbanBoard
+                    database={selectedDatabase}
+                    disabled={isMutating}
+                    items={items}
+                    key={`kanban:${selectedDatabase.id}:${JSON.stringify(
+                      selectedDatabase.properties,
+                    )}`}
+                    onMoveItem={handleUpdateProperty}
+                    onOpenItem={onOpenItem}
+                  />
                 ) : (
                   <DatabaseTable
                     database={selectedDatabase}

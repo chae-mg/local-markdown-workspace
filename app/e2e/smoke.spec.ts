@@ -171,6 +171,13 @@ test('uses a real directory handle for the complete workspace flow', async ({
     .getByRole('textbox', { name: '상태 새 Option 이름' })
     .press('Enter')
   await expect(page.getByText('예정', { exact: true })).toBeVisible()
+  await page
+    .getByRole('textbox', { name: '상태 새 Option 이름' })
+    .fill('진행 중')
+  await page
+    .getByRole('textbox', { name: '상태 새 Option 이름' })
+    .press('Enter')
+  await expect(page.getByText('진행 중', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: '속성 추가' }).click()
   await page.getByRole('textbox', { name: '새 속성 이름' }).fill('완료')
@@ -223,6 +230,40 @@ test('uses a real directory handle for the complete workspace flow', async ({
     page.getByRole('columnheader', { name: /상태/ }),
   ).not.toBeVisible()
   await page.getByRole('checkbox', { name: '상태 열 표시' }).check()
+
+  await page.getByRole('button', { name: '칸반 보기' }).click()
+  const groupBySelect = page.getByRole('combobox', {
+    name: '칸반 그룹 속성',
+  })
+  await expect(groupBySelect.locator('option:checked')).toHaveText('상태')
+  const cardHandle = page.getByRole('button', {
+    name: '대시보드 개선 카드 이동',
+  })
+  const doingColumn = page.getByRole('region', { name: '진행 중 칸반 열' })
+  const startBox = await cardHandle.boundingBox()
+  const targetBox = await doingColumn.boundingBox()
+  if (!startBox || !targetBox) {
+    throw new Error('칸반 카드 또는 대상 열의 위치를 확인할 수 없습니다.')
+  }
+  await page.mouse.move(
+    startBox.x + startBox.width / 2,
+    startBox.y + startBox.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    targetBox.x + targetBox.width / 2,
+    targetBox.y + targetBox.height / 2,
+    { steps: 12 },
+  )
+  await page.mouse.up()
+  await expect(doingColumn.getByText('대시보드 개선')).toBeVisible()
+
+  await page.getByRole('button', { name: '테이블 보기' }).click()
+  await expect(
+    page
+      .getByRole('combobox', { name: '대시보드 개선 상태' })
+      .locator('option:checked'),
+  ).toHaveText('진행 중')
 
   const databaseFiles = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
@@ -292,6 +333,10 @@ test('uses a real directory handle for the complete workspace flow', async ({
             id: expect.stringMatching(/^opt_/),
             name: '예정',
           }),
+          expect.objectContaining({
+            id: expect.stringMatching(/^opt_/),
+            name: '진행 중',
+          }),
         ],
       }),
       expect.objectContaining({
@@ -310,8 +355,11 @@ test('uses a real directory handle for the complete workspace flow', async ({
   const storedCompleted = storedProperties.find(
     (property) => property.name === '완료 여부',
   )
+  const storedDoingOption = storedStatus?.options?.find(
+    (option) => option.name === '진행 중',
+  )
   expect(databaseFiles.itemSource).toContain(
-    `${storedStatus?.id}: ${storedStatus?.options?.[0]?.id}`,
+    `${storedStatus?.id}: ${storedDoingOption?.id}`,
   )
   expect(databaseFiles.itemSource).toContain(`${storedCompleted?.id}: true`)
   expect(databaseFiles.itemSource).toMatch(/\n---\n\n# 대시보드 개선\n$/)
