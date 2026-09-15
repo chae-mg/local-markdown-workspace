@@ -31,6 +31,7 @@ import {
   type DatabaseView,
   type DatabaseViewType,
 } from '@/domain/database-view'
+import { DocumentConflictError } from '@/domain/document'
 import type { MarkdownValue } from '@/domain/markdown'
 import type { DatabaseApplicationService } from '@/services/database.service'
 import type { ViewApplicationService } from '@/services/view.service'
@@ -40,6 +41,12 @@ interface DatabaseWorkspaceProps {
   onWorkspaceChanged(): Promise<void> | void
   service?: DatabaseApplicationService
   viewApplicationService?: ViewApplicationService
+}
+
+interface DatabasePropertyConflict {
+  item: DatabaseItem
+  property: PropertyDefinition
+  value: MarkdownValue | undefined
 }
 
 function messageFromError(error: unknown) {
@@ -59,6 +66,7 @@ export function DatabaseWorkspace({
     null,
   )
   const [items, setItems] = useState<DatabaseItem[]>([])
+  const [itemRevision, setItemRevision] = useState(0)
   const [views, setViews] = useState<DatabaseView[]>([])
   const [selectedViewId, setSelectedViewId] = useState<string | null>(null)
   const [databaseName, setDatabaseName] = useState('')
@@ -74,8 +82,11 @@ export function DatabaseWorkspace({
     | 'deleting'
     | 'updating-property'
     | 'updating-view'
+    | 'property-conflict'
   >('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [propertyConflict, setPropertyConflict] =
+    useState<DatabasePropertyConflict | null>(null)
 
   const selectedDatabase =
     databases.find((database) => database.id === selectedDatabaseId) ?? null
@@ -285,6 +296,11 @@ export function DatabaseWorkspace({
         item.id,
         property.id,
         value,
+        {
+          expectedLastModified: item.lastModified,
+          expectedSource: item.source,
+          path: item.path,
+        },
       )
       setItems((current) =>
         current.map((candidate) =>
@@ -292,10 +308,68 @@ export function DatabaseWorkspace({
         ),
       )
       await onWorkspaceChanged()
+      setPropertyConflict(null)
+      setStatus('ready')
+    } catch (error) {
+      if (error instanceof DocumentConflictError) {
+        setPropertyConflict({ item, property, value })
+        setErrorMessage(error.message)
+        setStatus('property-conflict')
+        return
+      }
+      setErrorMessage(messageFromError(error))
+      setStatus('ready')
+    }
+  }
+
+  const handleReloadAfterConflict = async () => {
+    if (!selectedDatabaseId || !propertyConflict) {
+      return
+    }
+    setStatus('loading')
+    setErrorMessage(null)
+    try {
+      setItems(await service.loadItems(selectedDatabaseId))
+      setItemRevision((revision) => revision + 1)
+      setPropertyConflict(null)
       setStatus('ready')
     } catch (error) {
       setErrorMessage(messageFromError(error))
+      setStatus('property-conflict')
+    }
+  }
+
+  const handleForcePropertyUpdate = async () => {
+    if (!selectedDatabaseId || !propertyConflict) {
+      return
+    }
+    setStatus('updating-property')
+    setErrorMessage(null)
+    const { item, property, value } = propertyConflict
+    try {
+      const updatedItem = await service.updateProperty(
+        selectedDatabaseId,
+        item.id,
+        property.id,
+        value,
+        {
+          expectedLastModified: item.lastModified,
+          expectedSource: item.source,
+          force: true,
+          path: item.path,
+        },
+      )
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.id === updatedItem.id ? updatedItem : candidate,
+        ),
+      )
+      await onWorkspaceChanged()
+      setPropertyConflict(null)
       setStatus('ready')
+    } catch (error) {
+      setErrorMessage(messageFromError(error))
+      setStatus('property-conflict')
     }
   }
 
@@ -383,7 +457,8 @@ export function DatabaseWorkspace({
     status === 'creating-item' ||
     status === 'deleting' ||
     status === 'updating-property' ||
-    status === 'updating-view'
+    status === 'updating-view' ||
+    status === 'property-conflict'
 
   return (
     <section className="document-content min-h-0 flex-1 overflow-y-auto bg-stone-50/40 px-5 py-8 sm:px-8 lg:px-10">
@@ -464,7 +539,7 @@ export function DatabaseWorkspace({
           </form>
         ) : null}
 
-        {errorMessage ? (
+        {errorMessage && status !== 'property-conflict' ? (
           <div
             className="mt-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
             role="alert"
@@ -607,6 +682,46 @@ export function DatabaseWorkspace({
                   </div>
                 </div>
 
+                {propertyConflict ? (
+                  <div
+                    className="flex flex-col gap-3 border-b border-red-200 bg-red-50 px-5 py-4 text-sm text-red-950 sm:flex-row sm:items-center sm:justify-between"
+                    role="alert"
+                  >
+                    <div className="flex items-start gap-2">
+                      <TriangleAlert
+                        aria-hidden="true"
+                        className="mt-0.5 size-4 shrink-0"
+                      />
+                      <div>
+                        <p className="font-medium">
+                          “{propertyConflict.item.title}” 항목이 외부에서
+                          변경되었습니다.
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-red-800">
+                          외부 파일은 변경하지 않았습니다. 최신 내용을 다시
+                          불러오거나 현재 {propertyConflict.property.name}{' '}
+                          변경을 적용할 수 있습니다.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button
+                        onClick={() => void handleReloadAfterConflict()}
+                        size="sm"
+                        variant="outline"
+                      >
+                        디스크 버전 다시 불러오기
+                      </Button>
+                      <Button
+                        onClick={() => void handleForcePropertyUpdate()}
+                        size="sm"
+                      >
+                        현재 변경 적용
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
                 {showSchemaManager ? (
                   <SchemaPropertyManager
                     database={selectedDatabase}
@@ -713,7 +828,7 @@ export function DatabaseWorkspace({
                     disabled={isMutating}
                     groupById={selectedView.groupBy}
                     items={displayedItems}
-                    key={`kanban:${selectedView.id}:${JSON.stringify(
+                    key={`kanban:${selectedView.id}:${itemRevision}:${JSON.stringify(
                       selectedView,
                     )}:${JSON.stringify(selectedDatabase.properties)}`}
                     onGroupByChange={(groupBy) =>
@@ -727,7 +842,7 @@ export function DatabaseWorkspace({
                     database={selectedDatabase}
                     disabled={isMutating}
                     items={displayedItems}
-                    key={`table:${selectedView.id}:${JSON.stringify(
+                    key={`table:${selectedView.id}:${itemRevision}:${JSON.stringify(
                       selectedDatabase.properties,
                     )}`}
                     onDeleteItem={handleDeleteItem}

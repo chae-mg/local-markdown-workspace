@@ -53,6 +53,7 @@ const items: DatabaseItem[] = [
     properties: { prop_status: 'opt_todo' },
     body: '# 할 작업\n',
     lastModified: 30,
+    source: '# 할 작업\n',
   },
   {
     id: 'item_empty',
@@ -61,6 +62,7 @@ const items: DatabaseItem[] = [
     properties: {},
     body: '# 상태 없는 작업\n',
     lastModified: 20,
+    source: '# 상태 없는 작업\n',
   },
   {
     id: 'item_deleted',
@@ -69,6 +71,7 @@ const items: DatabaseItem[] = [
     properties: { prop_status: 'opt_old' },
     body: '# 삭제 옵션 작업\n',
     lastModified: 10,
+    source: '# 삭제 옵션 작업\n',
   },
 ]
 

@@ -133,6 +133,7 @@ describe('SchemaService', () => {
           properties: { prop_value: '숫자 아님' },
           body: '# 문자 항목',
           lastModified: 1,
+          source: '# 문자 항목',
         },
       ],
     })
@@ -156,6 +157,7 @@ describe('SchemaService', () => {
           properties: { prop_value: '2026-09-11' },
           body: '# 날짜 항목',
           lastModified: 1,
+          source: '# 날짜 항목',
         },
       ],
     })

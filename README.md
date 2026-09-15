@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 11 View Engine까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 12 External Modification Detection까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -153,6 +153,9 @@ Phase 0 개발 환경부터 Phase 11 View Engine까지 구현했습니다.
 - Database별 다중 Table/Kanban View 생성·전환·이름 변경·삭제
 - View별 Filter, Sort, Column Order, Hidden Property, Group By 저장
 - Database 재진입 시 저장된 View와 표시 설정 복원
+- 일반 문서·Table Cell·Kanban Card의 동일한 외부 변경 판정
+- Database Item의 수정 시각과 원문 Snapshot 기반 충돌 감지
+- 충돌 시 외부 파일 보존, 디스크 버전 다시 불러오기, 명시적 변경 적용
 - 기존 Item 값을 검사해 호환되지 않는 Property 타입 변경 차단
 - Schema 변경 시 Item Markdown Frontmatter와 본문 미수정
 - 휴지통 목록 조회와 원래 위치 복원, 충돌 시 다른 이름으로 복원

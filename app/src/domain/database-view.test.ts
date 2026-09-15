@@ -38,6 +38,7 @@ const items: DatabaseItem[] = [
     properties: { prop_status: 'opt_todo', prop_score: 10 },
     body: '',
     lastModified: 1,
+    source: '# 문서 A\n',
   },
   {
     id: 'item_b',
@@ -46,6 +47,7 @@ const items: DatabaseItem[] = [
     properties: { prop_status: 'opt_doing', prop_score: 30 },
     body: '',
     lastModified: 2,
+    source: '# 문서 B\n',
   },
   {
     id: 'item_c',
@@ -54,6 +56,7 @@ const items: DatabaseItem[] = [
     properties: { prop_score: 20 },
     body: '',
     lastModified: 3,
+    source: '# 기타\n',
   },
 ]
 

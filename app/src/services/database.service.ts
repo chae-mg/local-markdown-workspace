@@ -14,6 +14,10 @@ import {
   type MarkdownApplicationService,
 } from '@/services/markdown.service'
 import type { FileSystemService } from '@/services/file-system.service'
+import {
+  DocumentService,
+  type DocumentApplicationService,
+} from '@/services/document.service'
 import { parsePropertyDefinitions } from '@/services/schema-validation'
 import {
   joinWorkspacePath,
@@ -40,7 +44,15 @@ export interface DatabaseApplicationService {
     itemId: string,
     propertyId: string,
     value: MarkdownValue | undefined,
+    options?: DatabasePropertyWriteOptions,
   ): Promise<DatabaseItem>
+}
+
+export interface DatabasePropertyWriteOptions {
+  expectedLastModified: number
+  expectedSource: string
+  force?: boolean
+  path: string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -211,6 +223,10 @@ export class DatabaseService<
       `db_${crypto.randomUUID().replaceAll('-', '')}`,
     private readonly createItemId: () => string = () =>
       `item_${crypto.randomUUID().replaceAll('-', '')}`,
+    private readonly documents: DocumentApplicationService = new DocumentService(
+      fileSystem,
+      getRoot,
+    ),
   ) {}
 
   async createDatabase(name: string) {
@@ -417,6 +433,7 @@ export class DatabaseService<
     itemId: string,
     propertyId: string,
     value: MarkdownValue | undefined,
+    options?: DatabasePropertyWriteOptions,
   ) {
     const schema = await this.loadDatabase(databaseId)
     const property = schema.properties[propertyId as PropertyId]
@@ -428,23 +445,52 @@ export class DatabaseService<
     }
 
     const id = assertItemId(itemId)
-    const item = (await this.loadItems(databaseId)).find(
-      (candidate) => candidate.id === id,
-    )
+    let item: DatabaseItem | undefined
+    if (options) {
+      const path = normalizeWorkspacePath(options.path)
+      if (!path.startsWith(`${schema.folder}/`)) {
+        throw new DatabaseError(
+          'invalid-item',
+          'Database Item 경로가 Schema 폴더와 일치하지 않습니다.',
+        )
+      }
+      const source = options.force
+        ? await this.fileSystem.readTextFile(this.getRoot(), path)
+        : options.expectedSource
+      item = this.toItem(path, source, options.expectedLastModified)
+      if (item.id !== id) {
+        throw new DatabaseError(
+          'invalid-item',
+          '수정할 Item ID와 파일 내용이 일치하지 않습니다.',
+        )
+      }
+    } else {
+      item = (await this.loadItems(databaseId)).find(
+        (candidate) => candidate.id === id,
+      )
+    }
     if (!item) {
       throw new DatabaseError('invalid-item', '수정할 Item을 찾을 수 없습니다.')
     }
 
-    const root = this.getRoot()
-    const source = await this.fileSystem.readTextFile(root, item.path)
-    const nextSource = this.markdown.updateFrontmatter(source, {
+    const nextSource = this.markdown.updateFrontmatter(item.source, {
       [property.id]: validatePropertyValue(property, value),
     })
-    if (nextSource !== source) {
-      await this.fileSystem.writeTextFile(root, item.path, nextSource)
+    if (nextSource === item.source) {
+      return item
     }
-    const metadata = await this.fileSystem.getFileMetadata(root, item.path)
-    return this.toItem(item.path, nextSource, metadata.lastModified)
+    const savedDocument = await this.documents.saveDocument({
+      expectedLastModified: options?.expectedLastModified ?? item.lastModified,
+      expectedSource: options?.expectedSource ?? item.source,
+      force: options?.force,
+      path: item.path,
+      source: nextSource,
+    })
+    return this.toItem(
+      savedDocument.path,
+      savedDocument.source,
+      savedDocument.lastModified,
+    )
   }
 
   private toItem(
@@ -479,6 +525,7 @@ export class DatabaseService<
       properties,
       body: document.body,
       lastModified,
+      source,
     }
   }
 }

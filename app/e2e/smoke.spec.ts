@@ -290,6 +290,90 @@ test('uses a real directory handle for the complete workspace flow', async ({
       .locator('option:checked'),
   ).toHaveText('진행 중')
 
+  await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const items = await (
+      await (
+        await workspace.getDirectoryHandle('Databases')
+      ).getDirectoryHandle('업무 보드')
+    ).getDirectoryHandle('items')
+    for await (const entry of items.values()) {
+      if (entry.kind === 'file') {
+        const handle = await items.getFileHandle(entry.name)
+        const source = await (await handle.getFile()).text()
+        const writable = await handle.createWritable()
+        await writable.write(`${source}\n외부 메모 1\n`)
+        await writable.close()
+      }
+    }
+  })
+  await page.getByRole('checkbox', { name: '대시보드 개선 완료 여부' }).click()
+  await expect(page.getByText(/항목이 외부에서 변경되었습니다/)).toBeVisible()
+  const databaseSourceDuringConflict = await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const items = await (
+      await (
+        await workspace.getDirectoryHandle('Databases')
+      ).getDirectoryHandle('업무 보드')
+    ).getDirectoryHandle('items')
+    for await (const entry of items.values()) {
+      if (entry.kind === 'file') {
+        return (await (await items.getFileHandle(entry.name)).getFile()).text()
+      }
+    }
+    return ''
+  })
+  expect(databaseSourceDuringConflict).toContain('외부 메모 1')
+  expect(databaseSourceDuringConflict).toContain('prop_')
+  await page.getByRole('button', { name: '디스크 버전 다시 불러오기' }).click()
+  await expect(
+    page.getByRole('checkbox', { name: '대시보드 개선 완료 여부' }),
+  ).toBeChecked()
+
+  await page.evaluate(async () => {
+    const originPrivateRoot = await navigator.storage.getDirectory()
+    const workspace =
+      await originPrivateRoot.getDirectoryHandle('E2E Workspace')
+    const items = await (
+      await (
+        await workspace.getDirectoryHandle('Databases')
+      ).getDirectoryHandle('업무 보드')
+    ).getDirectoryHandle('items')
+    for await (const entry of items.values()) {
+      if (entry.kind === 'file') {
+        const handle = await items.getFileHandle(entry.name)
+        const source = await (await handle.getFile()).text()
+        const writable = await handle.createWritable()
+        await writable.write(`${source}\n외부 메모 2\n`)
+        await writable.close()
+      }
+    }
+  })
+  await page
+    .getByRole('combobox', { name: '대시보드 개선 상태' })
+    .evaluate((select) => {
+      const element = select as HTMLSelectElement
+      const option = [...element.options].find(
+        (candidate) => candidate.text === '예정',
+      )
+      if (!option) {
+        throw new Error('예정 Option을 찾을 수 없습니다.')
+      }
+      element.value = option.value
+      element.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+  await expect(page.getByText(/항목이 외부에서 변경되었습니다/)).toBeVisible()
+  await page.getByRole('button', { name: '현재 변경 적용' }).click()
+  await expect(
+    page
+      .getByRole('combobox', { name: '대시보드 개선 상태' })
+      .locator('option:checked'),
+  ).toHaveText('예정')
+
   const databaseFiles = await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
     const workspace =
@@ -407,14 +491,16 @@ test('uses a real directory handle for the complete workspace flow', async ({
   const storedCompleted = storedProperties.find(
     (property) => property.name === '완료 여부',
   )
-  const storedDoingOption = storedStatus?.options?.find(
-    (option) => option.name === '진행 중',
+  const storedTodoOption = storedStatus?.options?.find(
+    (option) => option.name === '예정',
   )
   expect(databaseFiles.itemSource).toContain(
-    `${storedStatus?.id}: ${storedDoingOption?.id}`,
+    `${storedStatus?.id}: ${storedTodoOption?.id}`,
   )
   expect(databaseFiles.itemSource).toContain(`${storedCompleted?.id}: true`)
-  expect(databaseFiles.itemSource).toMatch(/\n---\n\n# 대시보드 개선\n$/)
+  expect(databaseFiles.itemSource).toContain('\n---\n\n# 대시보드 개선\n')
+  expect(databaseFiles.itemSource).toContain('외부 메모 1')
+  expect(databaseFiles.itemSource).toContain('외부 메모 2')
 
   expect(databaseFiles.viewFiles).toHaveLength(2)
   expect(databaseFiles.viewFiles).toEqual(

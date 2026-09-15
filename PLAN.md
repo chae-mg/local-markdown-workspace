@@ -1173,6 +1173,15 @@ MVP UI에서는 View 1~2개만 허용해도 되지만 Data Model은 다중 View�
 
 Phase 5 전에 도입한 최소 External Change Guard를 모든 문서 및 Database 저장 흐름에 일관되게 적용하고 충돌 UX를 고도화한다.
 
+상태: **2026-09-15 완료**
+
+- Database Item에도 열린 시점의 `lastModified`와 정확한 Markdown 원문 Snapshot을 유지한다.
+- Table Cell과 Kanban Card 변경을 일반 문서와 같은 `DocumentService.saveDocument()` 경로로 저장한다.
+- 저장 직전에 수정 시각과 원문을 함께 비교해 둘 중 하나라도 다르면 파일 쓰기를 차단한다.
+- 충돌 시 Database 전체 편집을 잠그고 `디스크 버전 다시 불러오기`와 `현재 변경 적용`을 제공한다.
+- 다시 불러오기는 보류 중인 변경을 버리고 최신 Item을 읽으며, 명시적 적용은 최신 외부 원문에 현재 Property 변경만 반영한다.
+- 충돌 상태와 명시적 처리 흐름을 Table 및 Kanban이 공유한다.
+
 ## 처리
 
 문서 Open 시:

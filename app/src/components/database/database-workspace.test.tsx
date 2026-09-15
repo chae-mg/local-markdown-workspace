@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 
 import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import type { DatabaseView } from '@/domain/database-view'
+import { DocumentConflictError } from '@/domain/document'
 import type { DatabaseApplicationService } from '@/services/database.service'
 import type { ViewApplicationService } from '@/services/view.service'
 
@@ -22,6 +23,7 @@ const item = {
   properties: {},
   body: '\n# 대시보드 개선\n',
   lastModified: 10,
+  source: '---\nid: item_123456\n---\n\n# 대시보드 개선\n',
 }
 
 const view: DatabaseView = {
@@ -147,5 +149,92 @@ describe('DatabaseWorkspace', () => {
     expect(
       await screen.findByText('칸반에 사용할 Select 속성이 없습니다.'),
     ).toBeVisible()
+  })
+
+  it('offers reload or explicit apply when a Database item changed externally', async () => {
+    const user = userEvent.setup()
+    const noteSchema = {
+      ...schema,
+      properties: {
+        prop_note: {
+          id: 'prop_note' as const,
+          name: '메모',
+          type: 'text' as const,
+          deleted: false,
+          order: 1,
+        },
+      },
+    }
+    const noteItem = {
+      ...item,
+      properties: { prop_note: '처음' },
+      source: '---\nid: item_123456\nprop_note: 처음\n---\n\n# 대시보드 개선\n',
+    }
+    const updatedItem = {
+      ...noteItem,
+      lastModified: 20,
+      properties: { prop_note: '내 변경' },
+      source: '---\nid: item_123456\nprop_note: 내 변경\n---\n\n# 외부 제목\n',
+    }
+    const service = createService()
+    service.listDatabases.mockResolvedValue([noteSchema])
+    service.loadItems.mockResolvedValue([noteItem])
+    service.updateProperty
+      .mockRejectedValueOnce(new DocumentConflictError(noteItem.path, 20))
+      .mockResolvedValueOnce(updatedItem)
+    const viewApplicationService = createViewService()
+    viewApplicationService.listViews.mockResolvedValue([
+      { ...view, propertyOrder: ['prop_note'] },
+    ])
+
+    render(
+      <DatabaseWorkspace
+        onOpenItem={vi.fn()}
+        onWorkspaceChanged={vi.fn()}
+        service={service}
+        viewApplicationService={viewApplicationService}
+      />,
+    )
+
+    const note = await screen.findByRole('textbox', {
+      name: '대시보드 개선 메모',
+    })
+    await user.clear(note)
+    await user.type(note, '내 변경')
+    await user.tab()
+
+    expect(
+      await screen.findByText(/항목이 외부에서 변경되었습니다/),
+    ).toBeVisible()
+    expect(service.updateProperty).toHaveBeenNthCalledWith(
+      1,
+      schema.id,
+      noteItem.id,
+      'prop_note',
+      '내 변경',
+      {
+        expectedLastModified: noteItem.lastModified,
+        expectedSource: noteItem.source,
+        path: noteItem.path,
+      },
+    )
+
+    await user.click(screen.getByRole('button', { name: '현재 변경 적용' }))
+    expect(service.updateProperty).toHaveBeenNthCalledWith(
+      2,
+      schema.id,
+      noteItem.id,
+      'prop_note',
+      '내 변경',
+      {
+        expectedLastModified: noteItem.lastModified,
+        expectedSource: noteItem.source,
+        force: true,
+        path: noteItem.path,
+      },
+    )
+    expect(
+      screen.queryByText(/항목이 외부에서 변경되었습니다/),
+    ).not.toBeInTheDocument()
   })
 })

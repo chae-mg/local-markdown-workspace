@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { DocumentConflictError } from '@/domain/document'
 import type { WorkspaceEntry } from '@/domain/file-system'
 import type { FileSystemService } from '@/services/file-system.service'
 import { DatabaseService } from '@/services/database.service'
@@ -27,6 +28,8 @@ function createService(options?: {
     '.workspace/schemas': [],
   }
   const filesByPath = options?.filesByPath ?? {}
+  const mutableFiles = { ...filesByPath }
+  const lastModifiedByPath = new Map<string, number>()
   const itemIds = options?.itemIds ?? ['item_123456']
   const fileSystem = {
     createDirectory: vi.fn(async () => undefined),
@@ -35,7 +38,8 @@ function createService(options?: {
       kind: 'file' as const,
       name: path.split('/').at(-1) ?? '',
       path,
-      lastModified: path.includes('second') ? 20 : 10,
+      lastModified:
+        lastModifiedByPath.get(path) ?? (path.includes('second') ? 20 : 10),
       mimeType: 'text/markdown',
       size: 10,
     })),
@@ -43,13 +47,22 @@ function createService(options?: {
       async (_root: FakeHandle, path = '') => entriesByPath[path] ?? [],
     ),
     readTextFile: vi.fn(async (_root: FakeHandle, path: string) => {
-      const source = filesByPath[path]
+      const source = mutableFiles[path]
       if (source === undefined) {
         throw new Error(`Missing fake file: ${path}`)
       }
       return source
     }),
-    writeTextFile: vi.fn(async () => undefined),
+    writeTextFile: vi.fn(
+      async (_root: FakeHandle, path: string, content: string) => {
+        mutableFiles[path] = content
+        lastModifiedByPath.set(
+          path,
+          (lastModifiedByPath.get(path) ??
+            (path.includes('second') ? 20 : 10)) + 1,
+        )
+      },
+    ),
   } as unknown as FileSystemService<FakeHandle>
   const trashService = { moveEntryToTrash: vi.fn(async () => undefined) }
   const service = new DatabaseService(
@@ -60,7 +73,20 @@ function createService(options?: {
     () => 'db_123456',
     () => itemIds.shift() ?? 'item_fallback',
   )
-  return { fileSystem, service, trashService }
+  return {
+    fileSystem,
+    readSource: (path: string) => mutableFiles[path],
+    service,
+    simulateExternalChange(path: string, source: string) {
+      mutableFiles[path] = source
+      lastModifiedByPath.set(
+        path,
+        (lastModifiedByPath.get(path) ?? (path.includes('second') ? 20 : 10)) +
+          1,
+      )
+    },
+    trashService,
+  }
 }
 
 describe('DatabaseService', () => {
@@ -196,6 +222,7 @@ describe('DatabaseService', () => {
         properties: { prop_status: 'opt_progress' },
         body: '\n# 대시보드 개선\n\n본문',
         lastModified: 10,
+        source: itemSource,
       },
     ])
   })
@@ -327,5 +354,72 @@ describe('DatabaseService', () => {
       service.updateProperty('db_123456', 'item_123456', 'prop_score', '42'),
     ).rejects.toMatchObject({ code: 'incompatible-property-type' })
     expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
+  })
+
+  it('blocks stale Table or Kanban writes and applies them only after confirmation', async () => {
+    const path = 'Databases/프로젝트/items/first.md'
+    const itemSource = '---\nid: item_123456\n---\n\n# 대시보드 개선\n'
+    const externalSource =
+      '---\nid: item_123456\n---\n\n# 외부에서 바꾼 제목\n\n새 본문\n'
+    const schemaWithNumber = {
+      ...schema,
+      properties: {
+        prop_score: {
+          id: 'prop_score',
+          name: '점수',
+          type: 'number',
+          deleted: false,
+          order: 1,
+        },
+      },
+    }
+    const fixture = createService({
+      entriesByPath: {
+        'Databases/프로젝트/items': [{ kind: 'file', name: 'first.md', path }],
+      },
+      filesByPath: {
+        '.workspace/schemas/db_123456.json': JSON.stringify(schemaWithNumber),
+        [path]: itemSource,
+      },
+    })
+    const [openedItem] = await fixture.service.loadItems('db_123456')
+    expect(openedItem).toBeDefined()
+    fixture.simulateExternalChange(path, externalSource)
+
+    await expect(
+      fixture.service.updateProperty(
+        'db_123456',
+        'item_123456',
+        'prop_score',
+        42,
+        {
+          expectedLastModified: openedItem!.lastModified,
+          expectedSource: openedItem!.source,
+          path,
+        },
+      ),
+    ).rejects.toBeInstanceOf(DocumentConflictError)
+    expect(fixture.readSource(path)).toBe(externalSource)
+
+    await expect(
+      fixture.service.updateProperty(
+        'db_123456',
+        'item_123456',
+        'prop_score',
+        42,
+        {
+          expectedLastModified: openedItem!.lastModified,
+          expectedSource: openedItem!.source,
+          force: true,
+          path,
+        },
+      ),
+    ).resolves.toMatchObject({
+      title: '외부에서 바꾼 제목',
+      properties: { prop_score: 42 },
+    })
+    expect(fixture.readSource(path)).toContain('prop_score: 42')
+    expect(fixture.readSource(path)).toContain('# 외부에서 바꾼 제목')
+    expect(fixture.readSource(path)).toContain('새 본문')
   })
 })

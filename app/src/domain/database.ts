@@ -49,6 +49,7 @@ export interface DatabaseItem {
   properties: Record<string, MarkdownValue>
   body: string
   lastModified: number
+  source: string
 }
 
 export type DatabaseErrorCode =

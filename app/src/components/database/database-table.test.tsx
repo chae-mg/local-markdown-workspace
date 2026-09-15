@@ -87,6 +87,7 @@ const firstItem: DatabaseItem = {
   properties: {},
   body: '# 첫 작업\n',
   lastModified: 20,
+  source: '# 첫 작업\n',
 }
 
 const secondItem: DatabaseItem = {
@@ -96,6 +97,7 @@ const secondItem: DatabaseItem = {
   properties: { prop_status: 'opt_done', prop_done: true },
   body: '# 둘째 작업\n',
   lastModified: 10,
+  source: '# 둘째 작업\n',
 }
 
 function renderTable(
