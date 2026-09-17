@@ -380,7 +380,12 @@ test('uses a real directory handle for the complete workspace flow', async ({
       await originPrivateRoot.getDirectoryHandle('E2E Workspace')
     const metadata = await workspace.getDirectoryHandle('.workspace')
     const schemas = await metadata.getDirectoryHandle('schemas')
+    const backupDirectory = await metadata.getDirectoryHandle('backup')
     const viewsDirectory = await metadata.getDirectoryHandle('views')
+    const backupEntries: string[] = []
+    for await (const entry of backupDirectory.values()) {
+      backupEntries.push(entry.name)
+    }
     const schemaFiles: string[] = []
     for await (const entry of schemas.values()) {
       schemaFiles.push(entry.name)
@@ -441,6 +446,7 @@ test('uses a real directory handle for the complete workspace flow', async ({
     return {
       itemFiles,
       itemSource: await itemSource.text(),
+      backupEntries,
       schema,
       schemaFiles,
       viewFiles,
@@ -449,6 +455,10 @@ test('uses a real directory handle for the complete workspace flow', async ({
   })
 
   expect(databaseFiles.schemaFiles).toHaveLength(1)
+  expect(databaseFiles.backupEntries.length).toBeGreaterThan(0)
+  expect(databaseFiles.backupEntries).toEqual(
+    expect.arrayContaining([expect.stringMatching(/^backup_[a-f0-9]+$/)]),
+  )
   expect(databaseFiles.schemaFiles[0]).toMatch(/^db_[a-f0-9]+\.json$/)
   expect(databaseFiles.schema).toMatchObject({
     folder: 'Databases/업무 보드/items',
@@ -611,6 +621,12 @@ test('uses a real directory handle for the complete workspace flow', async ({
 
   await page.keyboard.press('Control+s')
   await expect(page.getByText('저장됨')).toBeVisible()
+
+  await page.getByRole('button', { name: '마지막 변경 실행 취소' }).click()
+  await expect(sourceEditor).toHaveValue('')
+  await expect(
+    page.getByRole('button', { name: '마지막 변경 실행 취소' }),
+  ).toBeEnabled()
 
   await sourceEditor.fill('# 이동 취소 확인')
   await page.getByRole('button', { name: '데이터베이스' }).click()

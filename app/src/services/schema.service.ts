@@ -8,6 +8,7 @@ import {
 } from '@/domain/database'
 import type { MarkdownValue } from '@/domain/markdown'
 import type { DatabaseApplicationService } from '@/services/database.service'
+import type { BackupApplicationService } from '@/services/backup.service'
 import type { FileSystemService } from '@/services/file-system.service'
 
 export interface SchemaApplicationService {
@@ -161,6 +162,7 @@ export class SchemaService<
       `prop_${crypto.randomUUID().replaceAll('-', '')}`,
     private readonly createOptionId: () => string = () =>
       `opt_${crypto.randomUUID().replaceAll('-', '')}`,
+    private readonly backups?: BackupApplicationService,
   ) {}
 
   async createProperty(databaseId: string, name: string, type: PropertyType) {
@@ -462,9 +464,21 @@ export class SchemaService<
   }
 
   private async persist(schema: DatabaseSchema) {
+    const schemaPath = `.workspace/schemas/${schema.id}.json`
+    if (this.backups) {
+      const currentSource = await this.fileSystem.readTextFile(
+        this.getRoot(),
+        schemaPath,
+      )
+      await this.backups.createTextSnapshot({
+        path: schemaPath,
+        reason: 'schema-change',
+        source: currentSource,
+      })
+    }
     await this.fileSystem.writeTextFile(
       this.getRoot(),
-      `.workspace/schemas/${schema.id}.json`,
+      schemaPath,
       `${JSON.stringify(schema, null, 2)}\n`,
       { allowProtected: true },
     )

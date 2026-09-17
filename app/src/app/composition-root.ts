@@ -1,4 +1,5 @@
 import { AttachmentService } from '@/services/attachment.service'
+import { BackupService } from '@/services/backup.service'
 import { BrowserFileSystemService } from '@/services/browser-file-system.service'
 import { DocumentService } from '@/services/document.service'
 import { DatabaseService } from '@/services/database.service'
@@ -26,6 +27,10 @@ export const attachmentService = new AttachmentService(
   () => workspaceService.getCurrentHandle(),
 )
 
+export const backupService = new BackupService(browserFileSystemService, () =>
+  workspaceService.getCurrentHandle(),
+)
+
 export const databaseService = new DatabaseService(
   browserFileSystemService,
   () => workspaceService.getCurrentHandle(),
@@ -36,6 +41,9 @@ export const schemaService = new SchemaService(
   browserFileSystemService,
   () => workspaceService.getCurrentHandle(),
   databaseService,
+  undefined,
+  undefined,
+  backupService,
 )
 
 export const viewService = new ViewService(

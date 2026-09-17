@@ -421,15 +421,25 @@ export class WorkspaceService<
     await this.fileSystem.createDirectory(root, `${trashEntryPath}/payload`, {
       allowProtected: true,
     })
-    await this.fileSystem.writeTextFile(
-      root,
-      metadataPath,
-      `${JSON.stringify(metadata, null, 2)}\n`,
-      { allowProtected: true },
-    )
-    await this.fileSystem.moveEntry(root, originalPath, payloadPath, {
-      allowProtected: true,
-    })
+    try {
+      await this.fileSystem.writeTextFile(
+        root,
+        metadataPath,
+        `${JSON.stringify(metadata, null, 2)}\n`,
+        { allowProtected: true },
+      )
+      await this.fileSystem.moveEntry(root, originalPath, payloadPath, {
+        allowProtected: true,
+      })
+    } catch (error) {
+      await this.fileSystem
+        .deleteEntry(root, trashEntryPath, {
+          allowProtected: true,
+          recursive: true,
+        })
+        .catch(() => undefined)
+      throw error
+    }
     return metadata
   }
 
@@ -580,6 +590,9 @@ export class WorkspaceService<
     }
 
     await this.fileSystem.createDirectory(handle, '.workspace/trash', {
+      allowProtected: true,
+    })
+    await this.fileSystem.createDirectory(handle, '.workspace/backup', {
       allowProtected: true,
     })
     await this.fileSystem.createDirectory(handle, '.workspace/schemas', {

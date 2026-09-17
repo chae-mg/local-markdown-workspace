@@ -1229,10 +1229,14 @@ MVP에서는 Merge 기능 제외.
 
 중요 변경을 되돌리고 삭제한 파일을 복원할 수 있게 한다.
 
-상태: **진행 중 — 2026-09-17**
+상태: **2026-09-17 완료**
 
 - 문서 저장과 Table/Kanban Property 변경의 전후 Snapshot을 세션 Undo Stack에 기록한다.
 - 최근 변경을 상단 헤더 버튼 또는 `Ctrl/Cmd + Z`로 되돌리며, 되돌리기 중 외부 변경이 발견되면 원래 명령을 유지한다.
+- Schema JSON을 변경하기 전에 `.workspace/backup/backup_*/`에 원문과 생성 시각·사유 Metadata를 기록한다.
+- Backup 생성에 실패하면 Schema 파일을 쓰지 않으며, Workspace 초기화 시 Backup 폴더를 함께 준비한다.
+- 파일·폴더를 휴지통으로 이동하는 중 실패하면 생성 중인 Trash Payload와 Metadata를 정리한다.
+- 휴지통 복원과 명시적 비우기 흐름은 기존 원래 경로·삭제 시각 보존 정책을 유지한다.
 
 ## Undo Stack
 

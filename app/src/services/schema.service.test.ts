@@ -7,6 +7,7 @@ import type {
   PropertyId,
 } from '@/domain/database'
 import type { DatabaseApplicationService } from '@/services/database.service'
+import type { BackupApplicationService } from '@/services/backup.service'
 import type { FileSystemService } from '@/services/file-system.service'
 import { SchemaService } from '@/services/schema.service'
 
@@ -29,6 +30,7 @@ function property(
 }
 
 function createService(options?: {
+  backups?: BackupApplicationService
   items?: DatabaseItem[]
   properties?: Record<PropertyId, PropertyDefinition>
 }) {
@@ -40,6 +42,7 @@ function createService(options?: {
     properties: options?.properties ?? {},
   }
   const fileSystem = {
+    readTextFile: vi.fn(async () => ''),
     writeTextFile: vi.fn(
       async (_root: FakeHandle, _path: string, source: string) => {
         currentSchema = JSON.parse(source) as DatabaseSchema
@@ -62,6 +65,7 @@ function createService(options?: {
     databases,
     () => propertyIds.shift() ?? 'prop_fallback',
     () => optionIds.shift() ?? 'opt_fallback',
+    options?.backups,
   )
   return {
     databases,
@@ -94,6 +98,61 @@ describe('SchemaService', () => {
       expect.stringContaining('"prop_first"'),
       { allowProtected: true },
     )
+  })
+
+  it('creates a Backup Snapshot before changing the Schema file', async () => {
+    const backups: BackupApplicationService = {
+      createTextSnapshot: vi.fn(async () => ({
+        version: 1 as const,
+        id: 'backup_123456',
+        originalPath: '.workspace/schemas/db_123456.json',
+        payloadPath:
+          '.workspace/backup/backup_123456/payload/.workspace/schemas/db_123456.json',
+        reason: 'schema-change',
+        createdAt: '2026-09-17T12:00:00.000Z',
+        size: 10,
+      })),
+    }
+    const { fileSystem, service } = createService({
+      backups,
+      properties: {
+        prop_existing: property('prop_existing', '설명', 'text', 1),
+      },
+    })
+    vi.mocked(fileSystem.readTextFile).mockResolvedValueOnce(
+      '{"schemaVersion":1}\n',
+    )
+
+    await service.createProperty('db_123456', '완료', 'checkbox')
+
+    expect(backups.createTextSnapshot).toHaveBeenCalledWith({
+      path: '.workspace/schemas/db_123456.json',
+      reason: 'schema-change',
+      source: '{"schemaVersion":1}\n',
+    })
+    expect(fileSystem.writeTextFile).toHaveBeenCalled()
+  })
+
+  it('does not write the Schema when its Backup Snapshot fails', async () => {
+    const backups: BackupApplicationService = {
+      createTextSnapshot: vi.fn(async () => {
+        throw new Error('백업 저장 공간이 부족합니다.')
+      }),
+    }
+    const { fileSystem, service } = createService({
+      backups,
+      properties: {
+        prop_existing: property('prop_existing', '설명', 'text', 1),
+      },
+    })
+    vi.mocked(fileSystem.readTextFile).mockResolvedValueOnce(
+      '{"schemaVersion":1}\n',
+    )
+
+    await expect(
+      service.createProperty('db_123456', '완료', 'checkbox'),
+    ).rejects.toThrow('백업 저장 공간이 부족합니다.')
+    expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
   })
 
   it('renames, soft deletes, and restores without writing Item files', async () => {

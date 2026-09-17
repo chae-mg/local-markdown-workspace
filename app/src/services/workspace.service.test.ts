@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { RecentWorkspace, WorkspaceEntry } from '@/domain/file-system'
+import { WorkspaceError } from '@/domain/errors'
 import type { FileSystemService } from '@/services/file-system.service'
 import type { RecentWorkspaceStore } from '@/services/recent-workspace.store'
 import { WorkspaceService } from '@/services/workspace.service'
@@ -92,6 +93,11 @@ describe('WorkspaceService', () => {
     expect(fileSystem.createDirectory).toHaveBeenCalledWith(
       handle,
       '.workspace/trash',
+      { allowProtected: true },
+    )
+    expect(fileSystem.createDirectory).toHaveBeenCalledWith(
+      handle,
+      '.workspace/backup',
       { allowProtected: true },
     )
     expect(fileSystem.createDirectory).toHaveBeenCalledWith(
@@ -319,6 +325,31 @@ describe('WorkspaceService', () => {
       'Documents/회의록.md',
       '.workspace/trash/trash_123456/payload/회의록.md',
       { allowProtected: true },
+    )
+  })
+
+  it('cleans up a partial trash entry when moving the original fails', async () => {
+    const { fileSystem, handle, service } = createDependencies()
+    await service.selectWorkspace()
+    vi.mocked(fileSystem.getFileMetadata).mockResolvedValue({
+      kind: 'file',
+      name: '회의록.md',
+      path: 'Documents/회의록.md',
+      lastModified: 1,
+      mimeType: 'text/markdown',
+      size: 10,
+    })
+    vi.mocked(fileSystem.moveEntry).mockRejectedValueOnce(
+      new WorkspaceError('file-system-error', '원본을 이동하지 못했습니다.'),
+    )
+
+    await expect(
+      service.moveEntryToTrash('Documents/회의록.md'),
+    ).rejects.toThrow('원본을 이동하지 못했습니다.')
+    expect(fileSystem.deleteEntry).toHaveBeenCalledWith(
+      handle,
+      '.workspace/trash/trash_123456',
+      { allowProtected: true, recursive: true },
     )
   })
 
