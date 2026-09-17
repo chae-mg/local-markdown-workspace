@@ -11,6 +11,7 @@ import {
   Settings,
   ShieldCheck,
   TriangleAlert,
+  Undo2,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -24,6 +25,7 @@ import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
 import { SettingsDialog } from '@/components/settings/settings-dialog'
 import { Button } from '@/components/ui/button'
 import { useDocumentStore } from '@/stores/document.store'
+import { useUndoStore } from '@/stores/undo.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 
 const navigationItems = [
@@ -43,6 +45,12 @@ function WelcomePage() {
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false)
   const [isSavingBeforeNavigation, setIsSavingBeforeNavigation] =
     useState(false)
+  const undoEntries = useUndoStore((state) => state.entries)
+  const undoErrorMessage = useUndoStore((state) => state.errorMessage)
+  const isUndoing = useUndoStore((state) => state.isUndoing)
+  const undo = useUndoStore((state) => state.undo)
+  const clearUndoError = useUndoStore((state) => state.clearError)
+  const previousWorkspaceIdRef = useRef<string | null>(null)
   const unsavedResolutionRef = useRef<
     ((shouldContinue: boolean) => void) | null
   >(null)
@@ -77,6 +85,45 @@ function WelcomePage() {
     trashStatus,
     workspace,
   } = useWorkspaceStore()
+
+  const workspaceId = workspace?.manifest?.id ?? null
+
+  useEffect(() => {
+    if (
+      previousWorkspaceIdRef.current !== null &&
+      previousWorkspaceIdRef.current !== workspaceId
+    ) {
+      useUndoStore.getState().clear()
+    }
+    previousWorkspaceIdRef.current = workspaceId
+  }, [workspaceId])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        !(event.ctrlKey || event.metaKey) ||
+        event.shiftKey ||
+        event.key.toLowerCase() !== 'z'
+      ) {
+        return
+      }
+
+      const target = event.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      void useUndoStore.getState().undo()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
     void initialize()
@@ -387,6 +434,23 @@ function WelcomePage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 px-1 text-xs text-[var(--ui-muted)]">
+            <Button
+              aria-label="마지막 변경 실행 취소"
+              disabled={undoEntries.length === 0 || isUndoing}
+              onClick={() => void undo()}
+              size="sm"
+              variant="outline"
+            >
+              {isUndoing ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-3.5 animate-spin"
+                />
+              ) : (
+                <Undo2 aria-hidden="true" className="size-3.5" />
+              )}
+              <span className="hidden sm:inline">실행 취소</span>
+            </Button>
             {isReady ? (
               <FolderCheck
                 aria-hidden="true"
@@ -400,6 +464,18 @@ function WelcomePage() {
             </span>
           </div>
         </header>
+
+        {undoErrorMessage ? (
+          <div
+            className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-950 sm:px-8"
+            role="alert"
+          >
+            <span>{undoErrorMessage}</span>
+            <Button onClick={clearUndoError} size="sm" variant="outline">
+              닫기
+            </Button>
+          </div>
+        ) : null}
 
         {isReady && activeSection === 'databases' && workspace ? (
           <DatabaseWorkspace

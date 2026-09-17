@@ -3,10 +3,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, vi } from 'vitest'
 
 import { App } from '@/app/App'
+import { useUndoStore } from '@/stores/undo.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 
 describe('App', () => {
   beforeEach(() => {
+    useUndoStore.getState().clear()
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
       value: vi.fn(),
@@ -49,6 +51,9 @@ describe('App', () => {
     expect(
       screen.getByRole('button', { name: '사이드바 전환' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '마지막 변경 실행 취소' }),
+    ).toBeDisabled()
   })
 
   it('asks before initializing a folder that already contains files', () => {

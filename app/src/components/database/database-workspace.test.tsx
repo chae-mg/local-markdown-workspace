@@ -1,12 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
 
 import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import type { DatabaseView } from '@/domain/database-view'
 import { DocumentConflictError } from '@/domain/document'
 import type { DatabaseApplicationService } from '@/services/database.service'
 import type { ViewApplicationService } from '@/services/view.service'
+import { useUndoStore } from '@/stores/undo.store'
 
 const schema = {
   schemaVersion: 1,
@@ -60,6 +61,10 @@ function createViewService(options?: { empty?: boolean }) {
 }
 
 describe('DatabaseWorkspace', () => {
+  beforeEach(() => {
+    useUndoStore.getState().clear()
+  })
+
   it('lists database items and opens their Markdown file', async () => {
     const user = userEvent.setup()
     const service = createService()
@@ -236,5 +241,21 @@ describe('DatabaseWorkspace', () => {
     expect(
       screen.queryByText(/항목이 외부에서 변경되었습니다/),
     ).not.toBeInTheDocument()
+
+    await waitFor(() => expect(useUndoStore.getState().entries).toHaveLength(1))
+    service.updateProperty.mockResolvedValueOnce(noteItem)
+    await expect(useUndoStore.getState().undo()).resolves.toBe(true)
+    expect(service.updateProperty).toHaveBeenNthCalledWith(
+      3,
+      schema.id,
+      noteItem.id,
+      'prop_note',
+      '처음',
+      {
+        expectedLastModified: updatedItem.lastModified,
+        expectedSource: updatedItem.source,
+        path: updatedItem.path,
+      },
+    )
   })
 })

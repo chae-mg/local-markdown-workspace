@@ -2,7 +2,9 @@ import { create } from 'zustand'
 
 import { documentService } from '@/app/composition-root'
 import { DocumentConflictError, type DocumentSnapshot } from '@/domain/document'
+import type { UndoCommand } from '@/domain/undo'
 import type { DocumentApplicationService } from '@/services/document.service'
+import { useUndoStore } from '@/stores/undo.store'
 
 export type DocumentEditorMode = 'visual' | 'source'
 export type DocumentStatus =
@@ -20,6 +22,10 @@ export interface DocumentStore {
   forceSave(): Promise<boolean>
   openDocument(path: string, editorMode?: DocumentEditorMode): Promise<void>
   reloadDocument(): Promise<void>
+  restoreSnapshot(
+    snapshot: DocumentSnapshot,
+    expected: DocumentSnapshot,
+  ): Promise<void>
   saveDocument(): Promise<boolean>
   setEditorMode(mode: DocumentEditorMode): void
   setPreservationWarning(value: boolean): void
@@ -77,6 +83,18 @@ export function createDocumentStore(service: DocumentApplicationService) {
             status: 'ready',
           })
         }
+
+        if (document.source !== savedDocument.source) {
+          const fileName = path.split('/').at(-1) ?? path
+          const command: UndoCommand = {
+            kind: 'document-edit',
+            label: `${fileName} 변경 되돌리기`,
+            undo: async () => {
+              await get().restoreSnapshot(document, savedDocument)
+            },
+          }
+          useUndoStore.getState().push(command)
+        }
         return true
       } catch (error) {
         if (get().document?.path !== path) {
@@ -89,6 +107,56 @@ export function createDocumentStore(service: DocumentApplicationService) {
           set({ errorMessage: messageFromError(error), status: 'error' })
         }
         return false
+      }
+    }
+
+    async function restoreSnapshot(
+      snapshot: DocumentSnapshot,
+      expected: DocumentSnapshot,
+    ) {
+      const current = get()
+      const isCurrentDocument = current.document?.path === expected.path
+
+      if (
+        isCurrentDocument &&
+        (current.document?.source !== expected.source ||
+          current.draftSource !== expected.source)
+      ) {
+        throw new Error(
+          '문서가 저장된 이후 다시 변경되었습니다. 현재 변경을 먼저 확인해주세요.',
+        )
+      }
+
+      if (isCurrentDocument) {
+        set({ errorMessage: null, status: 'saving' })
+      }
+
+      try {
+        const restoredDocument = await service.saveDocument({
+          expectedLastModified: expected.lastModified,
+          expectedSource: expected.source,
+          force: false,
+          path: expected.path,
+          source: snapshot.source,
+        })
+
+        if (get().document?.path === expected.path) {
+          set({
+            document: restoredDocument,
+            draftSource: restoredDocument.source,
+            errorMessage: null,
+            status: 'ready',
+          })
+        }
+      } catch (error) {
+        if (get().document?.path === expected.path) {
+          set({
+            errorMessage: messageFromError(error),
+            status:
+              error instanceof DocumentConflictError ? 'conflict' : 'error',
+          })
+        }
+        throw error
       }
     }
 
@@ -162,6 +230,8 @@ export function createDocumentStore(service: DocumentApplicationService) {
           await get().openDocument(path, editorMode)
         }
       },
+
+      restoreSnapshot,
 
       saveDocument() {
         return persist(false)

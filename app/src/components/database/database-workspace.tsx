@@ -35,6 +35,7 @@ import { DocumentConflictError } from '@/domain/document'
 import type { MarkdownValue } from '@/domain/markdown'
 import type { DatabaseApplicationService } from '@/services/database.service'
 import type { ViewApplicationService } from '@/services/view.service'
+import { useUndoStore } from '@/stores/undo.store'
 
 interface DatabaseWorkspaceProps {
   onOpenItem(path: string): Promise<void> | void
@@ -279,6 +280,44 @@ export function DatabaseWorkspace({
     }
   }
 
+  const recordPropertyUndo = (
+    databaseId: string,
+    item: DatabaseItem,
+    updatedItem: DatabaseItem,
+    property: PropertyDefinition,
+  ) => {
+    if (updatedItem.source === item.source) {
+      return
+    }
+
+    const previousValue = item.properties[property.id]
+    const isKanbanMove =
+      selectedView?.type === 'kanban' && selectedView.groupBy === property.id
+    useUndoStore.getState().push({
+      kind: isKanbanMove ? 'kanban-move' : 'property-edit',
+      label: `${item.title} · ${property.name} 변경 되돌리기`,
+      undo: async () => {
+        const restoredItem = await service.updateProperty(
+          databaseId,
+          updatedItem.id,
+          property.id,
+          previousValue,
+          {
+            expectedLastModified: updatedItem.lastModified,
+            expectedSource: updatedItem.source,
+            path: updatedItem.path,
+          },
+        )
+        setItems((current) =>
+          current.map((candidate) =>
+            candidate.id === restoredItem.id ? restoredItem : candidate,
+          ),
+        )
+        await onWorkspaceChanged()
+      },
+    })
+  }
+
   const handleUpdateProperty = async (
     item: DatabaseItem,
     property: PropertyDefinition,
@@ -302,6 +341,8 @@ export function DatabaseWorkspace({
           path: item.path,
         },
       )
+
+      recordPropertyUndo(selectedDatabaseId, item, updatedItem, property)
       setItems((current) =>
         current.map((candidate) =>
           candidate.id === updatedItem.id ? updatedItem : candidate,
@@ -359,6 +400,7 @@ export function DatabaseWorkspace({
           path: item.path,
         },
       )
+      recordPropertyUndo(selectedDatabaseId, item, updatedItem, property)
       setItems((current) =>
         current.map((candidate) =>
           candidate.id === updatedItem.id ? updatedItem : candidate,

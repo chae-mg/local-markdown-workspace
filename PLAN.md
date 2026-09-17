@@ -1229,6 +1229,11 @@ MVP에서는 Merge 기능 제외.
 
 중요 변경을 되돌리고 삭제한 파일을 복원할 수 있게 한다.
 
+상태: **진행 중 — 2026-09-17**
+
+- 문서 저장과 Table/Kanban Property 변경의 전후 Snapshot을 세션 Undo Stack에 기록한다.
+- 최근 변경을 상단 헤더 버튼 또는 `Ctrl/Cmd + Z`로 되돌리며, 되돌리기 중 외부 변경이 발견되면 원래 명령을 유지한다.
+
 ## Undo Stack
 
 앱 Session 중:

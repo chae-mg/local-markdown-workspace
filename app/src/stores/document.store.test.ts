@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DocumentConflictError, type DocumentSnapshot } from '@/domain/document'
 import type { DocumentApplicationService } from '@/services/document.service'
 import { createDocumentStore } from '@/stores/document.store'
+import { useUndoStore } from '@/stores/undo.store'
 
 const openedDocument: DocumentSnapshot = {
   lastModified: 100,
@@ -24,6 +25,10 @@ function createService() {
 }
 
 describe('document store', () => {
+  beforeEach(() => {
+    useUndoStore.getState().clear()
+  })
+
   it('keeps a draft and advances the saved snapshot after saving', async () => {
     const service = createService()
     const store = createDocumentStore(service)
@@ -44,6 +49,50 @@ describe('document store', () => {
       draftSource: '# 수정\n',
       status: 'ready',
     })
+  })
+
+  it('records a saved Document change and restores its previous Snapshot', async () => {
+    const service = createService()
+    const store = createDocumentStore(service)
+
+    await store.getState().openDocument(openedDocument.path)
+    store.getState().updateDraft('# 수정\n')
+    await expect(store.getState().saveDocument()).resolves.toBe(true)
+
+    expect(useUndoStore.getState().entries).toHaveLength(1)
+    expect(useUndoStore.getState().entries[0]?.kind).toBe('document-edit')
+
+    await expect(useUndoStore.getState().undo()).resolves.toBe(true)
+
+    expect(service.saveDocument).toHaveBeenNthCalledWith(2, {
+      expectedLastModified: 101,
+      expectedSource: '# 수정\n',
+      force: false,
+      path: openedDocument.path,
+      source: '# 처음\n',
+    })
+    expect(store.getState()).toMatchObject({
+      document: { source: '# 처음\n' },
+      draftSource: '# 처음\n',
+      status: 'ready',
+    })
+    expect(useUndoStore.getState().entries).toHaveLength(0)
+  })
+
+  it('does not overwrite a newer local draft while undoing', async () => {
+    const service = createService()
+    const store = createDocumentStore(service)
+
+    await store.getState().openDocument(openedDocument.path)
+    store.getState().updateDraft('# 수정\n')
+    await expect(store.getState().saveDocument()).resolves.toBe(true)
+    store.getState().updateDraft('# 저장 후 새 수정\n')
+
+    await expect(useUndoStore.getState().undo()).resolves.toBe(false)
+
+    expect(service.saveDocument).toHaveBeenCalledTimes(1)
+    expect(store.getState().draftSource).toBe('# 저장 후 새 수정\n')
+    expect(useUndoStore.getState().entries).toHaveLength(1)
   })
 
   it('keeps the local draft when an external change causes a conflict', async () => {
