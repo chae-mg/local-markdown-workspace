@@ -112,6 +112,11 @@ function createFixture(options?: { manifest?: unknown; itemSource?: string }) {
       if (!(path in files)) throw new Error('missing')
       return files[path]
     }),
+    writeTextFile: vi.fn(
+      async (_root: FakeHandle, path: string, content: string) => {
+        files[path] = content
+      },
+    ),
   } as unknown as FileSystemService<FakeHandle>
   const workspace = {
     scanWorkspace: vi.fn(async () => [
@@ -123,8 +128,25 @@ function createFixture(options?: { manifest?: unknown; itemSource?: string }) {
       },
     ]),
   }
-  const service = new HealthCheckService(fileSystem, () => handle, workspace)
-  return { fileSystem, files, service }
+  const backup = {
+    createTextSnapshot: vi.fn(async () => ({
+      version: 1 as const,
+      id: 'backup_fixture',
+      originalPath: '.workspace/workspace.json',
+      payloadPath:
+        '.workspace/backup/backup_fixture/payload/.workspace/workspace.json',
+      reason: 'workspace-migration',
+      createdAt: '2026-09-18T00:00:00.000Z',
+      size: 1,
+    })),
+  }
+  const service = new HealthCheckService(
+    fileSystem,
+    () => handle,
+    workspace,
+    backup,
+  )
+  return { backup, fileSystem, files, service }
 }
 
 describe('HealthCheckService', () => {
@@ -135,7 +157,7 @@ describe('HealthCheckService', () => {
       healthy: true,
       issues: [],
     })
-    expect(fileSystem).not.toHaveProperty('writeTextFile')
+    expect(fileSystem.writeTextFile).not.toHaveBeenCalled()
   })
 
   it('detects broken references and attachments as read-only issues', async () => {
@@ -172,5 +194,31 @@ describe('HealthCheckService', () => {
     await expect(service.migrate(2)).rejects.toMatchObject({
       code: 'invalid-target-version',
     })
+  })
+
+  it('backs up and migrates a supported Version 0 manifest', async () => {
+    const { backup, files, service } = createFixture({
+      manifest: {
+        workspaceVersion: 0,
+        id: 'ws_fixture',
+        name: 'legacy',
+        createdAt: '2026-09-18T00:00:00.000Z',
+      },
+    })
+
+    await expect(service.migrate(1)).resolves.toEqual({
+      changed: true,
+      fromVersion: 0,
+      toVersion: 1,
+    })
+    expect(backup.createTextSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '.workspace/workspace.json',
+        reason: 'workspace-migration',
+      }),
+    )
+    expect(
+      JSON.parse(files['.workspace/workspace.json']).workspaceVersion,
+    ).toBe(1)
   })
 })

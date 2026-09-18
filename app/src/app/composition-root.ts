@@ -25,12 +25,6 @@ export const searchService = new SearchService(
   workspaceService,
 )
 
-export const healthCheckService = new HealthCheckService(
-  browserFileSystemService,
-  () => workspaceService.getCurrentHandle(),
-  workspaceService,
-)
-
 export const documentService = new DocumentService(
   browserFileSystemService,
   () => workspaceService.getCurrentHandle(),
@@ -43,6 +37,13 @@ export const attachmentService = new AttachmentService(
 
 export const backupService = new BackupService(browserFileSystemService, () =>
   workspaceService.getCurrentHandle(),
+)
+
+export const healthCheckService = new HealthCheckService(
+  browserFileSystemService,
+  () => workspaceService.getCurrentHandle(),
+  workspaceService,
+  backupService,
 )
 
 export const databaseService = new DatabaseService(

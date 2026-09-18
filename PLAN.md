@@ -1337,7 +1337,8 @@ Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행
 - 설정에서 읽기 전용 Workspace Health Check 실행
 - Manifest, Schema, Item, View, Attachment, Trash Metadata 검사
 - 현재 Workspace Version(1) 외의 미래 Version과 미지원 Migration 경로 차단
-- 실제 Version 변환 경로가 추가되기 전에는 어떤 원본도 자동 변경하지 않음
+- 지원하는 Version 0 → 1 변환은 변경 전 Backup, 변환 후 Health Check, 실패 시 원본 복원을 수행
+- 중간 Version 누락과 미래 Version은 어떤 원본도 자동 변경하지 않음
 
 ## 완료 조건
 

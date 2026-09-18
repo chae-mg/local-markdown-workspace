@@ -19,6 +19,7 @@ import {
 } from '@/domain/workspace'
 import type { FileSystemService } from '@/services/file-system.service'
 import { markdownService } from '@/services/markdown.service'
+import type { BackupApplicationService } from '@/services/backup.service'
 import type { WorkspaceApplicationService } from '@/services/workspace.service'
 import { normalizeWorkspacePath } from '@/utils/path'
 
@@ -129,6 +130,10 @@ export class HealthCheckService<
       WorkspaceApplicationService,
       'scanWorkspace'
     >,
+    private readonly backup?: Pick<
+      BackupApplicationService,
+      'createTextSnapshot'
+    >,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -180,13 +185,63 @@ export class HealthCheckService<
       )
     }
     if (fromVersion < currentWorkspaceVersion) {
-      throw new MigrationError(
-        'migration-unavailable',
-        `${fromVersion}에서 ${currentWorkspaceVersion}으로 가는 Migration 경로가 없습니다. 원본은 변경하지 않았습니다.`,
-      )
+      if (fromVersion !== 0 || !this.isLegacyManifest(parsed)) {
+        throw new MigrationError(
+          'migration-unavailable',
+          `${fromVersion}에서 ${currentWorkspaceVersion}으로 가는 Migration 경로가 없습니다. 원본은 변경하지 않았습니다.`,
+        )
+      }
+      if (!this.backup) {
+        throw new MigrationError(
+          'migration-unavailable',
+          'Migration 전에 원본 Backup을 만들 수 없어 중단했습니다.',
+        )
+      }
+
+      await this.backup.createTextSnapshot({
+        path: manifestPath,
+        reason: 'workspace-migration',
+        source,
+      })
+      const migratedSource = `${JSON.stringify(
+        { ...parsed, workspaceVersion: currentWorkspaceVersion },
+        null,
+      )}\n`
+      await this.fileSystem.writeTextFile(root, manifestPath, migratedSource, {
+        allowProtected: true,
+      })
+
+      const validation = await this.run()
+      if (!validation.healthy) {
+        await this.fileSystem.writeTextFile(root, manifestPath, source, {
+          allowProtected: true,
+        })
+        throw new MigrationError(
+          'migration-validation-failed',
+          'Migration 후 Health Check에 실패해 원본 Manifest를 복원했습니다.',
+        )
+      }
+
+      return {
+        changed: true,
+        fromVersion,
+        toVersion: targetVersion,
+      }
     }
 
     return { changed: false, fromVersion, toVersion: targetVersion }
+  }
+
+  private isLegacyManifest(value: unknown): value is Record<string, unknown> {
+    return (
+      isRecord(value) &&
+      typeof value.id === 'string' &&
+      /^ws_[a-zA-Z0-9]+$/.test(value.id) &&
+      typeof value.name === 'string' &&
+      Boolean(value.name.trim()) &&
+      typeof value.createdAt === 'string' &&
+      !Number.isNaN(Date.parse(value.createdAt))
+    )
   }
 
   private async checkManifest(root: DirectoryHandle, issues: HealthIssue[]) {
