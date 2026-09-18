@@ -31,6 +31,8 @@ pnpm test:e2e
 - GitHub Actions의 `build`와 `deploy` Job이 모두 성공한다.
 - `https://chae-mg.github.io/local-markdown-workspace/`가 HTTP 200을 반환한다.
 - Hash URL로 새로고침해도 초기 Workspace 화면이 표시된다.
+- Manifest와 Service Worker가 등록되고 설치 가능한 PWA로 표시되는지 확인한다.
+- 최초 접속 후 네트워크를 끊고 앱 셸을 다시 열 수 있는지 확인한다.
 - 사용자 Markdown 원본과 `.workspace/` Metadata가 배포 과정에서 변경되지 않는다.
 
 ## 수동 환경 확인

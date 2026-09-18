@@ -14,6 +14,7 @@ Chrome에서 설치 없이 사용하는 **Local-first Markdown Workspace**입니
 - Notion 스타일 Table / Kanban View
 - 앱 데이터와 사용자 Content 분리
 - AI에 전달하기 쉬운 Markdown 유지
+- PWA 설치와 오프라인 앱 셸 캐시
 
 ## 문서 구성
 
@@ -85,6 +86,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 10. Undo / Backup / Trash
 11. Search / Health Check
 12. Migration / Release
+13. PWA / Offline Shell
 ```
 
 ## 확정된 구현 기준
@@ -98,7 +100,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 15 Health Check 1차까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 17 PWA 오프라인 앱 셸까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -107,6 +109,7 @@ Phase 0 개발 환경부터 Phase 15 Health Check 1차까지 구현했습니다.
 - Vitest + React Testing Library
 - Playwright
 - GitHub Actions CI + GitHub Pages 배포
+- PWA Manifest·Service Worker 기반 앱 설치와 정적 리소스 캐시
 - Hash Routing 기반 Workspace 진입 화면
 - Chrome Folder Picker와 Read/Write Permission 흐름
 - 최근 `FileSystemDirectoryHandle`의 IndexedDB 저장과 복원
@@ -138,6 +141,7 @@ Phase 0 개발 환경부터 Phase 15 Health Check 1차까지 구현했습니다.
 - 미지원 Migration 경로와 미래 Workspace Version의 원본 보존 차단
 - Legacy Workspace Version 0 → 1 Migration의 Backup·검증·실패 복원
 - Release Checklist와 Health Check를 포함한 최종 QA 흐름
+- PWA Manifest·Service Worker 기반 앱 설치와 정적 리소스 캐시
 - Attachment 바이너리 파일 읽기·쓰기와 고유 파일명 생성
 - 파일 선택, Drag & Drop, 클립보드 이미지 붙여넣기
 - 문서 위치 기준의 이동 가능한 상대경로 Markdown 삽입
@@ -189,6 +193,10 @@ cd app
 pnpm install
 pnpm dev
 ```
+
+### PWA와 오프라인 사용
+
+GitHub Pages에서 앱을 한 번 열어 Service Worker 캐시를 만든 뒤에는 설치 가능한 PWA로 사용할 수 있습니다. 캐시된 앱 셸은 네트워크가 끊겨도 다시 열 수 있지만, 최초 접속과 최초 캐시 생성에는 인터넷이 필요합니다. 문서와 Workspace Metadata는 PWA 캐시가 아니라 사용자가 선택한 로컬 폴더에 계속 저장됩니다.
 
 전체 검증:
 

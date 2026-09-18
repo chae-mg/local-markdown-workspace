@@ -1406,3 +1406,34 @@ pnpm test:e2e
 - 실패한 검증이 있는 Commit은 배포되지 않는다.
 
 상태: **2026-09-18 QA 체크리스트·Health Check E2E·Release 검증 완료**
+
+---
+
+# 25. Phase 17 — PWA / Offline Shell
+
+## 목표
+
+- GitHub Pages에서 앱을 설치 가능한 PWA로 제공한다.
+- Manifest와 Service Worker로 앱 셸·정적 리소스를 캐시한다.
+- Workspace 파일은 계속 사용자의 로컬 폴더에 저장하고, 서버 동기화로 범위를 확장하지 않는다.
+
+## 구현
+
+- `vite-plugin-pwa` 기반 `manifest.webmanifest` 생성
+- `registerSW({ immediate: true })`를 통한 Service Worker 등록
+- 앱 JavaScript·CSS·폰트·아이콘의 precache
+- 192px·512px 설치 아이콘과 GitHub Pages 상대 경로 설정
+
+## 제한 사항
+
+- 첫 접속과 최초 캐시 생성에는 인터넷 연결이 필요하다.
+- 캐시가 준비된 뒤에는 앱 셸을 오프라인에서 다시 열 수 있지만, 브라우저·OS의 저장 공간 정책에 따라 캐시가 삭제될 수 있다.
+- 로컬 Workspace 파일은 PWA 캐시가 아니라 사용자가 선택한 폴더에 저장된다.
+
+## 완료 조건
+
+- `manifest.webmanifest`, `sw.js`, Workbox 런타임이 Production Build에 생성된다.
+- Unit·E2E 테스트와 GitHub Pages 배포가 기존과 동일하게 통과한다.
+- 최신 Chrome에서 설치 가능한 앱 정보가 표시되고, 기존 로컬 파일 흐름이 유지된다.
+
+상태: **2026-09-18 PWA 빌드·Unit·E2E 검증 완료**

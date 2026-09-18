@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Local Markdown Workspace</title>
+  <desc id="desc">A warm paper-colored workspace tile with a blue markdown symbol.</desc>
+  <rect width="512" height="512" rx="118" fill="#f5f3ed"/>
+  <rect x="91" y="80" width="330" height="352" rx="54" fill="#ffffff" stroke="#d7d2c7" stroke-width="16"/>
+  <path d="M155 192h202M155 256h144M155 320h107" fill="none" stroke="#315d86" stroke-linecap="round" stroke-width="27"/>
+  <path d="m309 299 32 32 48-59" fill="none" stroke="#d97745" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/>
+</svg>
