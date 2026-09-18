@@ -684,7 +684,21 @@ test('uses a real directory handle for the complete workspace flow', async ({
 
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await settingsDialog.getByRole('checkbox', { name: '자동 저장 사용' }).check()
+  await settingsDialog
+    .getByRole('combobox', { name: '자동 저장 간격' })
+    .selectOption('1000')
   await settingsDialog.getByRole('button', { name: '완료' }).click()
+
+  await page.getByRole('button', { name: '에디터', exact: true }).click()
+  const editorTopBar = page.locator('.milkdown-top-bar')
+  await expect(editorTopBar).toBeVisible()
+  await page
+    .locator('.milkdown-shell .ProseMirror')
+    .fill('# 자동 저장 메뉴바 확인')
+  await expect(page.getByText('자동 저장 대기')).toBeVisible()
+  await expect(page.getByText('저장됨')).toBeVisible({ timeout: 5000 })
+  await expect(editorTopBar).toBeVisible()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
 
   await page.evaluate(async () => {
     const originPrivateRoot = await navigator.storage.getDirectory()
