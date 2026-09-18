@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 14 Search까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 15 Health Check 1차까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -133,6 +133,9 @@ Phase 0 개발 환경부터 Phase 14 Search까지 구현했습니다.
 - 파일명·첫 H1·본문·Database Property를 검색하는 Workspace Search
 - `.workspace/search/index.json` 파생 검색 Index와 손상·누락 시 자동 재생성
 - 외부 파일 추가·수정·삭제를 다음 검색 시 반영하는 Incremental Reindex
+- 설정에서 실행하는 읽기 전용 Workspace Health Check
+- Schema, Item, View, Attachment, Trash Metadata의 참조·Version·중복 ID 검사
+- 미지원 Migration 경로와 미래 Workspace Version의 원본 보존 차단
 - Attachment 바이너리 파일 읽기·쓰기와 고유 파일명 생성
 - 파일 선택, Drag & Drop, 클립보드 이미지 붙여넣기
 - 문서 위치 기준의 이동 가능한 상대경로 Markdown 삽입

@@ -30,6 +30,8 @@ import { useDocumentStore } from '@/stores/document.store'
 import { useUndoStore } from '@/stores/undo.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
 import { searchService } from '@/app/composition-root'
+import { healthCheckService } from '@/app/composition-root'
+import type { HealthCheckReport } from '@/domain/health-check'
 
 const navigationItems = [
   { id: 'documents', label: '문서', icon: FileText },
@@ -45,6 +47,10 @@ function WelcomePage() {
     useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [healthReport, setHealthReport] = useState<HealthCheckReport | null>(
+    null,
+  )
+  const [isHealthChecking, setIsHealthChecking] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false)
   const [isSavingBeforeNavigation, setIsSavingBeforeNavigation] =
@@ -275,6 +281,31 @@ function WelcomePage() {
     }
 
     setIsMobileSidebarOpen((current) => !current)
+  }
+
+  const handleRunHealthCheck = async () => {
+    setIsHealthChecking(true)
+    try {
+      setHealthReport(await healthCheckService.run())
+    } catch (error) {
+      setHealthReport({
+        checkedAt: new Date().toISOString(),
+        healthy: false,
+        issues: [
+          {
+            code: 'unreadable-file',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Workspace를 검사하지 못했습니다.',
+            path: '',
+            severity: 'error',
+          },
+        ],
+      })
+    } finally {
+      setIsHealthChecking(false)
+    }
   }
 
   const currentPageLabel =
@@ -637,8 +668,13 @@ function WelcomePage() {
         )}
       </main>
       <SettingsDialog
+        healthReport={isReady ? healthReport : null}
+        isHealthChecking={isHealthChecking}
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        onRunHealthCheck={
+          isReady ? () => void handleRunHealthCheck() : undefined
+        }
       />
       <UnsavedChangesDialog
         documentName={

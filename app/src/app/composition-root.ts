@@ -4,6 +4,7 @@ import { BrowserFileSystemService } from '@/services/browser-file-system.service
 import { DocumentService } from '@/services/document.service'
 import { DatabaseService } from '@/services/database.service'
 import { IndexedDbRecentWorkspaceStore } from '@/services/indexed-db-recent-workspace.store'
+import { HealthCheckService } from '@/services/health-check.service'
 import { SchemaService } from '@/services/schema.service'
 import { SearchService } from '@/services/search.service'
 import { ViewService } from '@/services/view.service'
@@ -19,6 +20,12 @@ export const workspaceService = new WorkspaceService(
 )
 
 export const searchService = new SearchService(
+  browserFileSystemService,
+  () => workspaceService.getCurrentHandle(),
+  workspaceService,
+)
+
+export const healthCheckService = new HealthCheckService(
   browserFileSystemService,
   () => workspaceService.getCurrentHandle(),
   workspaceService,

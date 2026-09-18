@@ -1,7 +1,14 @@
-import { RotateCcw, Settings2, X } from 'lucide-react'
+import {
+  LoaderCircle,
+  RotateCcw,
+  Settings2,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import type { HealthCheckReport } from '@/domain/health-check'
 import { DOCUMENT_FONT_STACKS } from '@/app/theme-preferences'
 import type {
   AccentPreset,
@@ -13,8 +20,11 @@ import type {
 import { usePreferencesStore } from '@/stores/preferences.store'
 
 interface SettingsDialogProps {
+  healthReport?: HealthCheckReport | null
+  isHealthChecking?: boolean
   isOpen: boolean
   onClose(): void
+  onRunHealthCheck?: () => void
 }
 
 const autosaveDelayOptions: Array<{
@@ -81,7 +91,13 @@ const editorModeOptions: Array<{
   },
 ]
 
-export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+export function SettingsDialog({
+  healthReport = null,
+  isHealthChecking = false,
+  isOpen,
+  onClose,
+  onRunHealthCheck,
+}: SettingsDialogProps) {
   const {
     preferences,
     resetPreferences,
@@ -492,6 +508,69 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             >
               {storageError} 변경 내용은 현재 화면에서는 유지됩니다.
             </p>
+          ) : null}
+
+          {onRunHealthCheck ? (
+            <div className="mt-6">
+              <p className="text-xs font-semibold text-[var(--ui-muted)]">
+                Workspace 진단
+              </p>
+              <div className="mt-2 rounded-lg border border-[var(--ui-border)] px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0 text-[var(--ui-accent)]"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <strong className="block text-sm font-medium">
+                      원본 파일 무결성 검사
+                    </strong>
+                    <p className="mt-1 text-xs leading-5 text-[var(--ui-muted)]">
+                      JSON, Markdown, Schema, View, 첨부 파일과 휴지통
+                      Metadata를 읽기 전용으로 확인합니다.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  className="mt-3"
+                  disabled={isHealthChecking}
+                  onClick={onRunHealthCheck}
+                  size="sm"
+                  variant="outline"
+                >
+                  {isHealthChecking ? (
+                    <LoaderCircle
+                      aria-hidden="true"
+                      className="size-3.5 animate-spin"
+                    />
+                  ) : null}
+                  {isHealthChecking ? '검사 중' : 'Workspace 검사 실행'}
+                </Button>
+                {healthReport ? (
+                  <div
+                    className={`mt-3 rounded-md px-3 py-2 text-xs leading-5 ${
+                      healthReport.healthy
+                        ? 'bg-emerald-50 text-emerald-800'
+                        : 'bg-red-50 text-red-800'
+                    }`}
+                    role="status"
+                  >
+                    {healthReport.healthy
+                      ? '문제 없이 확인되었습니다.'
+                      : `${healthReport.issues.length}개의 문제를 확인했습니다.`}
+                    {!healthReport.healthy ? (
+                      <ul className="mt-1 list-disc pl-4">
+                        {healthReport.issues.slice(0, 4).map((entry) => (
+                          <li key={`${entry.path}-${entry.code}`}>
+                            {entry.message}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </div>
 

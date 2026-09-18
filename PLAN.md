@@ -1332,11 +1332,20 @@ Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행
 4. 각 단계 결과를 Validation한다.
 5. 실패 시 기존 원본을 유지하고 오류를 보고한다.
 
+## 현재 구현
+
+- 설정에서 읽기 전용 Workspace Health Check 실행
+- Manifest, Schema, Item, View, Attachment, Trash Metadata 검사
+- 현재 Workspace Version(1) 외의 미래 Version과 미지원 Migration 경로 차단
+- 실제 Version 변환 경로가 추가되기 전에는 어떤 원본도 자동 변경하지 않음
+
 ## 완료 조건
 
 - 오류가 있는 Workspace를 열어도 원본을 임의 수정하지 않는다.
 - Migration Fixture로 이전 Version부터 최신 Version까지 순차 변환을 검증한다.
 - 중간 Version 누락과 미래 Version은 안전하게 차단한다.
+
+상태: **2026-09-18 Health Check 1차 및 Migration 안전 가드 구현 완료**
 
 ---
 
