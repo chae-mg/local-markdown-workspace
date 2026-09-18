@@ -640,7 +640,7 @@ export function DocumentEditor({
               }
             >
               <VisualMarkdownEditor
-                disabled={status === 'saving' || status === 'conflict'}
+                disabled={status === 'conflict'}
                 initialMarkdown={parsedDocument.value.body}
                 key={visualEditorRevision}
                 onChange={handleVisualChange}
@@ -653,7 +653,7 @@ export function DocumentEditor({
             <textarea
               aria-label="Markdown 원문"
               className="document-content min-h-[calc(100dvh-7.75rem)] w-full resize-none bg-[var(--ui-surface)] px-7 py-10 text-[15px] leading-7 text-[var(--ui-text)] outline-none sm:px-14"
-              disabled={status === 'saving' || status === 'conflict'}
+              disabled={status === 'conflict'}
               onChange={(event) => updateDraft(event.target.value)}
               onPaste={handleSourcePaste}
               ref={sourceTextareaRef}
