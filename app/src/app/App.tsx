@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   PanelLeft,
   RefreshCw,
+  Search,
   Settings,
   ShieldCheck,
   TriangleAlert,
@@ -22,11 +23,13 @@ import { UnsavedChangesDialog } from '@/components/editor/unsaved-changes-dialog
 import { DatabaseWorkspace } from '@/components/database/database-workspace'
 import { WorkspaceTrash } from '@/components/file-tree/workspace-trash'
 import { WorkspaceTree } from '@/components/file-tree/workspace-tree'
+import { WorkspaceSearch } from '@/components/search/workspace-search'
 import { SettingsDialog } from '@/components/settings/settings-dialog'
 import { Button } from '@/components/ui/button'
 import { useDocumentStore } from '@/stores/document.store'
 import { useUndoStore } from '@/stores/undo.store'
 import { useWorkspaceStore } from '@/stores/workspace.store'
+import { searchService } from '@/app/composition-root'
 
 const navigationItems = [
   { id: 'documents', label: '문서', icon: FileText },
@@ -42,6 +45,7 @@ function WelcomePage() {
     useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false)
   const [isSavingBeforeNavigation, setIsSavingBeforeNavigation] =
     useState(false)
@@ -133,6 +137,7 @@ function WelcomePage() {
     if (status === 'ready') {
       void refreshWorkspace()
       void refreshTrash()
+      void searchService.refresh().catch(() => undefined)
     }
   }, [refreshTrash, refreshWorkspace, status, workspace?.manifest?.id])
 
@@ -204,6 +209,7 @@ function WelcomePage() {
     if (path === selectedPath || (await saveBeforeNavigation())) {
       selectEntry(path)
       setActiveSection('documents')
+      setIsSearchOpen(false)
       setIsMobileSidebarOpen(false)
     }
   }
@@ -341,43 +347,65 @@ function WelcomePage() {
               {label}
             </button>
           ))}
+          <button
+            aria-pressed={isSearchOpen}
+            className={`flex h-[31px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors ${
+              isSearchOpen
+                ? 'bg-[var(--ui-hover)] font-medium text-[var(--ui-text)]'
+                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]'
+            } disabled:cursor-not-allowed disabled:opacity-45`}
+            disabled={!isReady}
+            onClick={() => setIsSearchOpen((current) => !current)}
+            type="button"
+          >
+            <Search aria-hidden="true" className="size-4" strokeWidth={1.8} />
+            검색
+          </button>
         </nav>
 
         <div className="flex min-h-0 w-[252px] flex-1 flex-col overflow-y-auto px-3 pb-2">
           {isReady && workspace ? (
-            <>
-              <WorkspaceTree
-                entries={entries}
-                errorMessage={treeErrorMessage}
-                isLoading={treeStatus === 'loading'}
-                isMutating={mutationStatus !== 'idle'}
-                key={workspace.manifest?.id ?? workspace.name}
-                mutationErrorMessage={mutationErrorMessage}
-                onClearMutationError={clearMutationError}
-                onCreateFolder={handleCreateFolder}
-                onCreateMarkdownFile={handleCreateMarkdownFile}
-                onDirectorySelect={(path) => void handleDirectorySelect(path)}
-                onMoveEntry={handleMoveEntry}
-                onMoveToTrash={handleMoveToTrash}
-                onRefresh={() => void refreshWorkspace()}
-                onRenameEntry={handleRenameEntry}
+            isSearchOpen ? (
+              <WorkspaceSearch
+                onClose={() => setIsSearchOpen(false)}
                 onSelect={(path) => void handleEntrySelect(path)}
-                selectedDirectoryPath={selectedDirectoryPath}
-                selectedPath={selectedPath}
-                workspaceName={workspace.name}
+                service={searchService}
               />
-              <WorkspaceTrash
-                entries={trashEntries}
-                errorMessage={trashErrorMessage}
-                isLoading={trashStatus === 'loading'}
-                isMutating={mutationStatus !== 'idle'}
-                mutationErrorMessage={mutationErrorMessage}
-                onClearMutationError={clearMutationError}
-                onEmpty={emptyTrash}
-                onRefresh={() => void refreshTrash()}
-                onRestore={handleRestoreTrashEntry}
-              />
-            </>
+            ) : (
+              <>
+                <WorkspaceTree
+                  entries={entries}
+                  errorMessage={treeErrorMessage}
+                  isLoading={treeStatus === 'loading'}
+                  isMutating={mutationStatus !== 'idle'}
+                  key={workspace.manifest?.id ?? workspace.name}
+                  mutationErrorMessage={mutationErrorMessage}
+                  onClearMutationError={clearMutationError}
+                  onCreateFolder={handleCreateFolder}
+                  onCreateMarkdownFile={handleCreateMarkdownFile}
+                  onDirectorySelect={(path) => void handleDirectorySelect(path)}
+                  onMoveEntry={handleMoveEntry}
+                  onMoveToTrash={handleMoveToTrash}
+                  onRefresh={() => void refreshWorkspace()}
+                  onRenameEntry={handleRenameEntry}
+                  onSelect={(path) => void handleEntrySelect(path)}
+                  selectedDirectoryPath={selectedDirectoryPath}
+                  selectedPath={selectedPath}
+                  workspaceName={workspace.name}
+                />
+                <WorkspaceTrash
+                  entries={trashEntries}
+                  errorMessage={trashErrorMessage}
+                  isLoading={trashStatus === 'loading'}
+                  isMutating={mutationStatus !== 'idle'}
+                  mutationErrorMessage={mutationErrorMessage}
+                  onClearMutationError={clearMutationError}
+                  onEmpty={emptyTrash}
+                  onRefresh={() => void refreshTrash()}
+                  onRestore={handleRestoreTrashEntry}
+                />
+              </>
+            )
           ) : (
             <div className="mt-3 rounded-md px-2 py-3 text-xs leading-5 text-[var(--ui-muted)]">
               폴더를 연결하면 문서와 데이터베이스가 여기에 표시됩니다.

@@ -5,6 +5,7 @@ import { DocumentService } from '@/services/document.service'
 import { DatabaseService } from '@/services/database.service'
 import { IndexedDbRecentWorkspaceStore } from '@/services/indexed-db-recent-workspace.store'
 import { SchemaService } from '@/services/schema.service'
+import { SearchService } from '@/services/search.service'
 import { ViewService } from '@/services/view.service'
 import { WorkspaceService } from '@/services/workspace.service'
 
@@ -15,6 +16,12 @@ const recentWorkspaceStore =
 export const workspaceService = new WorkspaceService(
   browserFileSystemService,
   recentWorkspaceStore,
+)
+
+export const searchService = new SearchService(
+  browserFileSystemService,
+  () => workspaceService.getCurrentHandle(),
+  workspaceService,
 )
 
 export const documentService = new DocumentService(

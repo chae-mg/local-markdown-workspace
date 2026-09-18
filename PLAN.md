@@ -1293,15 +1293,19 @@ Workspace의 Markdown을 Source of Truth로 유지하면서 검색 가능한 파
 ## 구현
 
 - 파일명, 첫 H1, Markdown 본문, Database Property 값 검색
-- 문서 변경 시 Incremental Reindex
-- Index Version 불일치 또는 손상 시 전체 재생성
-- 초기 Scan에서 Markdown Body Lazy Loading
+- `.workspace/search/index.json`에 파생 Index 저장
+- 파일 Metadata가 바뀐 항목만 다시 읽는 Incremental Reindex
+- Index Version 불일치·손상·누락 시 전체 재생성
+- 초기 Index에는 제목·속성만 저장하고 본문은 검색 후보에서 Lazy Loading
+- 검색 결과에서 파일을 선택하면 기존 Editor로 이동
 
 ## 완료 조건
 
 - Index를 삭제해도 Workspace 원본에서 재생성할 수 있다.
 - 외부에서 추가·수정·삭제한 파일이 재 Scan 후 검색 결과에 반영된다.
 - 수백 개 Markdown 파일을 Scan하는 동안 UI가 장시간 멈추지 않는다.
+
+상태: **2026-09-18 구현 완료**
 
 ---
 

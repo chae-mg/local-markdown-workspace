@@ -98,7 +98,7 @@ Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의�
 
 ## 현재 구현 상태
 
-Phase 0 개발 환경부터 Phase 13 Undo / Backup / Trash까지 구현했습니다.
+Phase 0 개발 환경부터 Phase 14 Search까지 구현했습니다.
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui 구조
@@ -130,6 +130,9 @@ Phase 0 개발 환경부터 Phase 13 Undo / Backup / Trash까지 구현했습니
 - 저장 직전 수정 시각·원문 비교를 통한 외부 변경 충돌 방지
 - 충돌 시 디스크 버전 다시 불러오기 또는 명시적 덮어쓰기
 - 시각 편집기의 Markdown 정규화 가능성 감지와 자동 저장 중단
+- 파일명·첫 H1·본문·Database Property를 검색하는 Workspace Search
+- `.workspace/search/index.json` 파생 검색 Index와 손상·누락 시 자동 재생성
+- 외부 파일 추가·수정·삭제를 다음 검색 시 반영하는 Incremental Reindex
 - Attachment 바이너리 파일 읽기·쓰기와 고유 파일명 생성
 - 파일 선택, Drag & Drop, 클립보드 이미지 붙여넣기
 - 문서 위치 기준의 이동 가능한 상대경로 Markdown 삽입

@@ -628,6 +628,18 @@ test('uses a real directory handle for the complete workspace flow', async ({
     page.getByRole('button', { name: '마지막 변경 실행 취소' }),
   ).toBeEnabled()
 
+  await page.getByRole('button', { name: '검색' }).click()
+  await page
+    .getByRole('searchbox', { name: '워크스페이스 검색어' })
+    .fill('작업 일지')
+  await expect(
+    page.getByRole('button', { name: /작업 일지\.md/ }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: /작업 일지\.md/ }).click()
+  await expect(
+    page.getByRole('heading', { name: '작업 일지.md' }),
+  ).toBeVisible()
+
   await sourceEditor.fill('# 이동 취소 확인')
   await page.getByRole('button', { name: '데이터베이스' }).click()
   const unsavedDialog = page.getByRole('dialog', {

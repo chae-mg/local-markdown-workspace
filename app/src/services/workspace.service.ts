@@ -601,6 +601,9 @@ export class WorkspaceService<
     await this.fileSystem.createDirectory(handle, '.workspace/views', {
       allowProtected: true,
     })
+    await this.fileSystem.createDirectory(handle, '.workspace/search', {
+      allowProtected: true,
+    })
 
     const manifest: WorkspaceManifest = {
       workspaceVersion: currentWorkspaceVersion,

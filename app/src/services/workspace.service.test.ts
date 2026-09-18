@@ -110,6 +110,11 @@ describe('WorkspaceService', () => {
       '.workspace/views',
       { allowProtected: true },
     )
+    expect(fileSystem.createDirectory).toHaveBeenCalledWith(
+      handle,
+      '.workspace/search',
+      { allowProtected: true },
+    )
     expect(fileSystem.writeTextFile).toHaveBeenCalledWith(
       handle,
       '.workspace/workspace.json',
