@@ -1033,6 +1033,16 @@ test('uses a real directory handle for the complete workspace flow', async ({
   })
   expect(menuMovedDocumentLocation.content).toBe('')
   expect(menuMovedDocumentLocation.oldLocationExists).toBe(false)
+
+  const healthSettingsDialog = page.getByRole('dialog', {
+    name: '나에게 맞게 조정하기',
+  })
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await healthSettingsDialog
+    .getByRole('button', { name: 'Workspace 검사 실행' })
+    .click()
+  await expect(healthSettingsDialog).toContainText('문제 없이 확인되었습니다.')
+  await healthSettingsDialog.getByRole('button', { name: '완료' }).click()
 })
 
 test('asks before initializing a folder with existing files', async ({

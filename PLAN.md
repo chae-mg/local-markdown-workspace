@@ -1404,3 +1404,5 @@ pnpm test:e2e
 - GitHub Actions가 동일한 검증을 재현한다.
 - 배포 URL에서 첫 Workspace 선택 화면이 표시된다.
 - 실패한 검증이 있는 Commit은 배포되지 않는다.
+
+상태: **2026-09-18 QA 체크리스트·Health Check E2E·Release 검증 완료**
