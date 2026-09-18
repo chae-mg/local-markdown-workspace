@@ -26,7 +26,7 @@ export const DEFAULT_PREFERENCES: Readonly<UserPreferences> = {
   version: 1,
   autosave: {
     enabled: true,
-    delayMs: 1000,
+    delayMs: 3000,
   },
   theme: 'system',
   accent: {

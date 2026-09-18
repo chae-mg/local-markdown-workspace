@@ -129,7 +129,7 @@ Phase 0 개발 환경부터 Phase 17 PWA 오프라인 앱 셸까지 구현했습
 - YAML 1.2 Frontmatter 파싱·수정·직렬화와 원문 형식 보존
 - Milkdown Crepe 기반 WYSIWYG Markdown 편집기
 - WYSIWYG / Markdown 원문 모드 전환
-- 1초 Debounce 자동 저장과 수동 저장 상태 표시, 자동 저장 중에도 편집 유지
+- 마지막 입력 3초 후 실행되는 Debounce 자동 저장과 수동 저장 상태 표시, 자동 저장 중에도 편집 유지
 - 저장 직전 수정 시각·원문 비교를 통한 외부 변경 충돌 방지
 - 충돌 시 디스크 버전 다시 불러오기 또는 명시적 덮어쓰기
 - 시각 편집기의 Markdown 정규화 가능성 감지와 자동 저장 중단

@@ -28,7 +28,7 @@ describe('preferences', () => {
       }),
     ).toEqual({
       version: 1,
-      autosave: { enabled: false, delayMs: 1000 },
+      autosave: { enabled: false, delayMs: 3000 },
       theme: 'dark',
       accent: { preset: 'purple', customHex: '#AABBCC' },
       documentFont: 'notion',
