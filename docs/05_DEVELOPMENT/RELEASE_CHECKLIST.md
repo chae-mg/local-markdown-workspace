@@ -4,7 +4,7 @@
 
 ## 자동 검증
 
-`app/`에서 다음 명령을 순서대로 실행한다.
+저장소 루트에서 다음 명령을 순서대로 실행한다.
 
 ```text
 pnpm install --frozen-lockfile

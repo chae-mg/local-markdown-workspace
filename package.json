@@ -1,0 +1,19 @@
+{
+  "name": "local-markdown-workspace-repository",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter local-markdown-workspace dev",
+    "build": "pnpm --filter local-markdown-workspace build",
+    "lint": "pnpm --filter local-markdown-workspace lint",
+    "format": "pnpm --filter local-markdown-workspace format",
+    "format:check": "pnpm --filter local-markdown-workspace format:check",
+    "test": "pnpm --filter local-markdown-workspace test",
+    "test:watch": "pnpm --filter local-markdown-workspace test:watch",
+    "test:e2e": "pnpm --filter local-markdown-workspace test:e2e",
+    "preview": "pnpm --filter local-markdown-workspace preview"
+  }
+}

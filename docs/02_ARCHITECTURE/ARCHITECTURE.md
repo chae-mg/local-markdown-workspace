@@ -761,7 +761,7 @@ MVP는 GitHub Actions에서 검증과 Production Build를 수행한 뒤 GitHub P
 
 Repository Project Site의 하위 경로를 Build Base Path에 반영하고, Client Routing은 Hash Routing을 사용한다.
 
-GitHub Actions의 실행 디렉터리는 `app/`, Pages에 업로드하는 Build Artifact는 `app/dist/`로 고정한다.
+GitHub Actions의 앱 실행 디렉터리는 `apps/web/`, Pages에 업로드하는 Build Artifact는 `apps/web/dist/`로 고정한다.
 
 배포 조건:
 

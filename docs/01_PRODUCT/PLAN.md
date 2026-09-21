@@ -178,7 +178,7 @@ Search Index
 # 5. 권장 Project Structure
 
 ```text
-app/src/
+apps/web/src/
 │
 ├─ app/
 │  ├─ App.tsx
@@ -341,7 +341,7 @@ interface DatabaseView {
 
 ## 산출물
 
-다음 명령은 저장소의 `app/` 디렉터리에서 실행한다.
+다음 명령은 저장소 루트에서 실행한다.
 
 ```text
 pnpm dev
@@ -821,7 +821,7 @@ Property 추가/수정/삭제/복원 후 Item 데이터가 손상되지 않는�
 
 ## 선행 작업 — UI Foundation Prototype
 
-현재 앱에 바로 Style을 적용하지 않고 `app/public/prototypes/` 아래에 독립된 클릭형 UI Prototype을 먼저 만든다.
+현재 앱에 바로 Style을 적용하지 않고 `apps/web/public/prototypes/` 아래에 독립된 클릭형 UI Prototype을 먼저 만든다.
 
 상태: **2026-09-11 UI Foundation V1 확정**
 
@@ -1376,7 +1376,7 @@ Workspace 손상을 조기에 탐지하고 Version 변경을 안전하게 수행
 
 ## CI
 
-Pull Request와 `main` Push에서 `app/`을 작업 디렉터리로 사용해 다음을 실행한다.
+Pull Request와 `main` Push에서 `apps/web/`을 앱 작업 디렉터리로 사용해 다음을 실행한다.
 
 ```text
 pnpm install --frozen-lockfile

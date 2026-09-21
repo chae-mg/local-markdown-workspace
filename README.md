@@ -20,56 +20,27 @@ Chrome에서 설치 없이 사용하는 **Local-first Markdown Workspace**입니
 
 ```text
 .
-├─ app/                       # 실행 가능한 웹앱과 테스트
-│  ├─ src/
-│  ├─ e2e/
-│  ├─ package.json
-│  └─ vite.config.ts
+├─ apps/
+│  └─ web/                    # 실행 가능한 웹앱과 테스트
+│     ├─ src/
+│     ├─ e2e/
+│     ├─ package.json
+│     └─ vite.config.ts
+├─ packages/                  # 두 번째 앱에서 공유 코드가 생길 때만 추가
 ├─ .github/workflows/         # CI와 GitHub Pages 배포
+├─ AGENTS.md                  # AI·개발 작업 규칙
 ├─ README.md
-├─ PRD.md
-├─ PLAN.md
 └─ docs/
-   ├─ ARCHITECTURE.md
-   ├─ DATA_MODEL.md
-   └─ ADR/
-      ├─ 001-chrome-only.md
-      ├─ 002-local-first.md
-      ├─ 003-markdown-source-of-truth.md
-      └─ 004-schema-view-separation.md
+   ├─ 00_INDEX.md
+   ├─ 01_PRODUCT/            # PRD, 구현 계획
+   ├─ 02_ARCHITECTURE/       # 아키텍처, 데이터 모델
+   ├─ 05_DEVELOPMENT/        # 릴리스·검증 문서
+   ├─ 06_DECISIONS/          # ADR
+   ├─ 07_STATUS/             # 현재 상태·다음 작업·작업 기록
+   └─ _templates/
 ```
 
-## 문서 역할
-
-### `PRD.md`
-무엇을 만들지 정의합니다.
-
-- 제품 목적
-- 사용자
-- 기능 요구사항
-- MVP 범위
-- 비기능 요구사항
-- 성공 기준
-
-### `PLAN.md`
-어떻게 구현할지 정의합니다.
-
-- 기술 Stack
-- Architecture
-- Milestone
-- 구현 순서
-- 테스트
-- Migration
-- Release 기준
-
-### `docs/ARCHITECTURE.md`
-전체 시스템 구조와 Layer별 책임을 정의합니다.
-
-### `docs/DATA_MODEL.md`
-Workspace, Database, Item, Property, View 등 핵심 데이터 모델을 정의합니다.
-
-### `docs/ADR/`
-중요한 기술·제품 설계 결정을 기록합니다.
+문서의 시작점은 [`docs/00_INDEX.md`](docs/00_INDEX.md)입니다. 제품·구조·개발·결정·상태 문서를 역할별로 나누어 관리합니다.
 
 ## 권장 개발 순서
 
@@ -189,7 +160,6 @@ Phase 0 개발 환경부터 Phase 17 PWA 오프라인 앱 셸까지 구현했습
 - pnpm 11.19
 
 ```bash
-cd app
 pnpm install
 pnpm dev
 ```
@@ -201,7 +171,6 @@ GitHub Pages에서 앱을 한 번 열어 Service Worker 캐시를 만든 뒤에�
 전체 검증:
 
 ```bash
-cd app
 pnpm format:check
 pnpm lint
 pnpm test
@@ -211,7 +180,7 @@ pnpm test:e2e
 
 로컬 E2E는 설치된 Google Chrome을 사용합니다. GitHub Actions에서는 Playwright Chromium을 별도로 설치합니다. OPFS Directory Handle 역직렬화는 일부 Headless Chromium을 종료시킬 수 있으므로, E2E는 실제 Handle을 사용한 파일 흐름을 검증하고 Handle 저장·복원은 관련 Store와 Service 단위·통합 테스트로 검증합니다.
 
-실제 사용자 Markdown Workspace는 이 저장소 밖에 둡니다. 자동화 테스트용 Workspace가 필요하면 `app/test/fixtures/workspaces/` 아래에 재현 가능한 Fixture만 추가합니다.
+실제 사용자 Markdown Workspace는 이 저장소 밖에 둡니다. 자동화 테스트용 Workspace가 필요하면 `apps/web/test/fixtures/workspaces/` 아래에 재현 가능한 Fixture만 추가합니다.
 
 ## 개발 원칙
 
